@@ -1,6 +1,6 @@
 ---
 title: "BLE source water"
-author: "Christina Bonsell"
+author: "Christina Bonsell and Emily Bristol"
 date: "November 1, 2019"
 output: html_document
 ---
@@ -11,6 +11,7 @@ library(tidyverse)
 library(lubridate)
 library(cowplot)
 ```
+
 ```{r}
 YSI <- read_csv("All_BLE_Sonde_Data_2018_2019.csv", col_types = cols(date_time = col_date(format = "%m/%d/%Y"))) %>% 
   rename(Date_collected=date_time)
