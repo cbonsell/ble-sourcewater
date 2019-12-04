@@ -1,0 +1,128 @@
+---
+title: "BLE source water"
+author: "Christina Bonsell"
+date: "November 1, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(cowplot)
+```
+```{r}
+YSI <- read_csv("All_BLE_Sonde_Data_2018_2019.csv", col_types = cols(date_time = col_date(format = "%m/%d/%Y"))) %>% 
+  rename(Date_collected=date_time)
+#note; changed date of summer 2019 STL bc times near midnight and YSI was technically collected on a diff day than 18O
+
+O18 <- read_csv("BLE LTER 18O.csv", col_types = cols(Date_collected = col_date(format = "%m/%d/%Y"))) %>% 
+  arrange(Date_collected, Station)
+```
+```{r}
+input <- left_join(O18,YSI, by=c("Station"="station","Date_collected","WaterColumnDepth"="water_column_position")) %>% 
+  select(Station, Date_collected, DepthCat=WaterColumnDepth, Sal=sal, delta_18O) %>% 
+  mutate(Season=case_when(month(Date_collected)==7|month(Date_collected)==8 ~ "Summer",
+                          month(Date_collected)==6 ~ "Break-up",
+                          month(Date_collected)==4 ~ "Under-ice"),
+         Habitat= case_when(grepl("R", Station) ~ "River",
+                            grepl("D", Station) ~ "Deep",
+                            TRUE ~"Shallow"))%>%
+  drop_na(-DepthCat)
+
+```
+
+
+```{r}
+
+Pal <- c('#625989', '#636591', '#657298', '#677f9f', '#6a8ba5', '#6e98aa', '#72a4ae', '#78b1b1', '#80bdb2', '#8ac9b0', '#96d6ac', '#a4e1a4', '#b7ed95', '#cef879', '#e4f361', '#cce75b', '#b8da55', '#a7cc4f', '#9abd48', '#91ae41', '#8a9f39', '#868f32', '#847e2a', '#836d21', '#835b19', '#834710', '#842f08', '#840000')
+
+ggplot(input, aes(Sal, delta_18O))+
+  geom_point(aes(color=Station, shape=Season), size=3, alpha=.7)+
+  facet_wrap(~Habitat*DepthCat)+
+  scale_color_manual(values=Pal)+
+  theme_cowplot()
+
+#need to figure out WHICH June EELS2 is which
+```
+
+$SIM+MW+PML = 1$
+
+$5*SIM + 0*MW + 31.6*PML =  S$ 
+
+$-2.4*SIM + -22*MW + -3.5*PML = O$
+
+```{r create_function}
+
+
+calc_source <- function(S, O){
+  
+  A <- matrix(data=c(1, 1, 1, 5, 0, 31.6, -2.4, -22, -3.5), nrow=3, ncol=3, byrow=TRUE)    
+  b <- matrix(data=c(1, S, O), nrow=3, ncol=1, byrow=FALSE)
+  
+  x <- round(solve(A, b), 3)
+  
+  #tx <- t(x)
+  
+  #return(as.matrix(tx))
+  return(x)
+}
+
+```
+
+```{r calculate_fractions}
+
+a <- matrix(ncol=3, nrow=nrow(input))
+for(i in 1:nrow(input)){
+  a[i,] <- calc_source(input$Sal[i], input$delta_18O[i])
+}
+
+a <- as.data.frame(a)
+
+colnames(a)=c("SIM","MW","PML")
+
+data <- bind_cols(input,a)
+
+
+
+
+```
+
+```{r for_plot, fig.height=8, fig.width=11}
+a2 <- as.data.frame(a, col.names=c("SIM","MW","PML"))
+
+colnames(a2)=c("SIM","MW","PML")
+
+data2 <- bind_cols(input,a2) %>% 
+  pivot_longer(cols=SIM:PML, names_to = "Source")
+
+
+ggplot(data2, aes(Station, value))+
+  geom_col(aes(fill = Source), position = position_stack(reverse = TRUE)) +
+  coord_flip() +
+  facet_wrap(~Season*DepthCat*Habitat, scales="free")+
+  theme_cowplot()
+```
+
+```{r mean_plot, fig.height=8, fig.width=11}
+data_means <- bind_cols(input,a2) %>% 
+  pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
+  group_by(Station, DepthCat, Habitat, Season, Source) %>% 
+  summarize(mFrac=mean(value))
+
+ggplot(data_means, aes(Station, mFrac))+
+  geom_col(aes(fill = Source), position = position_stack(reverse = TRUE)) +
+  coord_flip() +
+  facet_wrap(~Season*DepthCat*Habitat, scales="free")+
+  theme_cowplot()
+```
+
+
+
+
+```{r}
+input %>% filter(Habitat=="River") %>% 
+  group_by(Station) %>% 
+  summarize(mSal=mean(Sal))
+```
+
