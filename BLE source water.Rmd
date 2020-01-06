@@ -85,7 +85,7 @@ $-2.4*SIM + -22*MW + -3.5*PML = O$
 
 calc_source <- function(S, O){
   
-  A <- matrix(data=c(1, 1, 1, 5, 0, 332.1, -2.4, -20.3, -3.5), nrow=3, ncol=3, byrow=TRUE)    
+  A <- matrix(data=c(1, 1, 1, 5, 0, 32.1, -2.4, -20.3, -3.5), nrow=3, ncol=3, byrow=TRUE)    
   b <- matrix(data=c(1, S, O), nrow=3, ncol=1, byrow=FALSE)
   
   x <- round(solve(A, b), 3)
