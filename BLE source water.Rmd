@@ -61,7 +61,14 @@ input %>% filter (Habitat=="River") %>%
   facet_wrap(~Season)+
   theme_cowplot()
 ```
-
+```{r lagoonO}
+input %>% filter (Habitat!="River") %>% 
+  ggplot(aes(delta_18O))+
+  geom_dotplot(aes(fill=Station), size=37)+
+  scale_fill_manual(values=Pal)+
+  facet_wrap(~Season*DepthCat)+
+  theme_cowplot()
+```
 
 ##Endmembers from Alkire and Trefrey 2006
 ![](AlkireandTrefrey endmembers.png)
