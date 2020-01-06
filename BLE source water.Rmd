@@ -47,6 +47,10 @@ ggplot(input, aes(Sal, delta_18O))+
 #need to figure out WHICH June EELS2 is which
 ```
 
+##Endmembers from alkire and Trefrey 2006
+![](AlkireandTrefrey endmembers.png)
+
+
 $SIM+MW+PML = 1$
 
 $5*SIM + 0*MW + 31.6*PML =  S$ 
