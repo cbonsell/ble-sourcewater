@@ -45,15 +45,31 @@ ggplot(input, aes(Sal, delta_18O))+
   theme_cowplot()
 
 #need to figure out WHICH June EELS2 is which
+
+ggplot(input, aes(delta_18O))+
+  geom_dotplot(aes(fill=Station, shape=Season), size=3, alpha=.7)+
+  facet_wrap(~Habitat*DepthCat)+
+  scale_fill_manual(values=Pal)+
+  theme_cowplot()
 ```
 
-##Endmembers from alkire and Trefrey 2006
+```{r riverO}
+input %>% filter (Habitat=="River") %>% 
+  ggplot(aes(delta_18O))+
+  geom_dotplot(aes(fill=Station), size=37)+
+  scale_fill_manual(values=Pal[c(1,5,10,15,20,25)])+
+  facet_wrap(~Season)+
+  theme_cowplot()
+```
+
+
+##Endmembers from Alkire and Trefrey 2006
 ![](AlkireandTrefrey endmembers.png)
 
 
 $SIM+MW+PML = 1$
 
-$5*SIM + 0*MW + 31.6*PML =  S$ 
+$5*SIM + 0*MW + 32.1*PML =  S$ 
 
 $-2.4*SIM + -22*MW + -3.5*PML = O$
 
@@ -62,7 +78,7 @@ $-2.4*SIM + -22*MW + -3.5*PML = O$
 
 calc_source <- function(S, O){
   
-  A <- matrix(data=c(1, 1, 1, 5, 0, 31.6, -2.4, -22, -3.5), nrow=3, ncol=3, byrow=TRUE)    
+  A <- matrix(data=c(1, 1, 1, 5, 0, 332.1, -2.4, -20.3, -3.5), nrow=3, ncol=3, byrow=TRUE)    
   b <- matrix(data=c(1, S, O), nrow=3, ncol=1, byrow=FALSE)
   
   x <- round(solve(A, b), 3)
