@@ -22,7 +22,7 @@ O18 <- read_csv("BLE LTER 18O.csv", col_types = cols(Date_collected = col_date(f
 ```
 ```{r}
 input <- left_join(O18,YSI, by=c("Station"="station","Date_collected","WaterColumnDepth"="water_column_position")) %>% 
-  select(Station, Date_collected, DepthCat=WaterColumnDepth, Sal=sal, delta_18O) %>% 
+  select(Node, Lagoon, Station, Date_collected, DepthCat=WaterColumnDepth, Sal=sal, delta_18O) %>% 
   mutate(Season=case_when(month(Date_collected)==7|month(Date_collected)==8 ~ "Summer",
                           month(Date_collected)==6 ~ "Break-up",
                           month(Date_collected)==4 ~ "Under-ice"),
@@ -39,17 +39,18 @@ input <- left_join(O18,YSI, by=c("Station"="station","Date_collected","WaterColu
 Pal <- c('#625989', '#636591', '#657298', '#677f9f', '#6a8ba5', '#6e98aa', '#72a4ae', '#78b1b1', '#80bdb2', '#8ac9b0', '#96d6ac', '#a4e1a4', '#b7ed95', '#cef879', '#e4f361', '#cce75b', '#b8da55', '#a7cc4f', '#9abd48', '#91ae41', '#8a9f39', '#868f32', '#847e2a', '#836d21', '#835b19', '#834710', '#842f08', '#840000')
 
 ggplot(input, aes(Sal, delta_18O))+
-  geom_point(aes(color=Station, shape=Season), size=3, alpha=.7)+
-  facet_wrap(~Habitat*DepthCat)+
-  scale_color_manual(values=Pal)+
+  geom_point(aes(color=Season, shape=Habitat), size=3, alpha=.7)+
+  geom_text(aes(label=Station), size=2)+
+  facet_wrap(~Lagoon)+
+  scale_color_manual(values=Pal[c(1,10,20)])+
   theme_cowplot()
 
 #need to figure out WHICH June EELS2 is which
 
 ggplot(input, aes(delta_18O))+
-  geom_dotplot(aes(fill=Station, shape=Season), size=3, alpha=.7)+
-  facet_wrap(~Habitat*DepthCat)+
-  scale_fill_manual(values=Pal)+
+  geom_dotplot(aes(fill=Habitat),alpha=.7)+
+  facet_wrap(~Lagoon*Season)+
+  scale_fill_manual(values=Pal[c(1,10,20)])+
   theme_cowplot()
 ```
 
@@ -116,7 +117,7 @@ data <- bind_cols(input,a)
 
 ```
 
-```{r for_plot, fig.height=8, fig.width=11}
+```{r for_plot}
 a2 <- as.data.frame(a, col.names=c("SIM","MW","PML"))
 
 colnames(a2)=c("SIM","MW","PML")
@@ -124,12 +125,6 @@ colnames(a2)=c("SIM","MW","PML")
 data2 <- bind_cols(input,a2) %>% 
   pivot_longer(cols=SIM:PML, names_to = "Source")
 
-
-ggplot(data2, aes(Station, value))+
-  geom_col(aes(fill = Source), position = position_stack(reverse = TRUE)) +
-  coord_flip() +
-  facet_wrap(~Season*DepthCat*Habitat, scales="free")+
-  theme_cowplot()
 ```
 
 ```{r mean_plot, fig.height=8, fig.width=11}
@@ -145,6 +140,10 @@ ggplot(data_means, aes(Station, mFrac))+
   theme_cowplot()
 ```
 
+```{r table}
+table1 <- data_means %>%
+  pivot_wider(names_from=Source, values_from=mFrac)
+```
 
 
 
