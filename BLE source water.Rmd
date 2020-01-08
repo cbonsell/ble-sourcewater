@@ -90,6 +90,13 @@ input %>% filter (Habitat=="River") %>%
 ```
 #mountain precip is more negative (bc high elevation is akin to higher latitude)
 
+#rivers are also a bit salty
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+input %>% filter(Habitat=="River") %>% 
+  group_by(Station) %>% 
+  summarize(mSal=mean(Sal))
+```
 
 
 ##Endmembers from Alkire and Trefrey 2006
@@ -148,7 +155,7 @@ data2 <- bind_cols(input,a2) %>%
 data_means <- bind_cols(input,a2) %>% 
   pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
   group_by(Lagoon, Station, DepthCat, Habitat, Season, Source, delta_18O) %>% 
-  summarize(mFrac=mean(value))
+  summarize(mFrac=mean(value), mDate=mean(Date_collected))
 
 data_means %>% filter(Habitat!="River") %>% 
   ggplot(aes(Station, mFrac))+
@@ -191,12 +198,18 @@ data_means %>%
 ```
 
 
-#rivers are a bit salty
+
+##Salinity data vs timepoints of sampling
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-input %>% filter(Habitat=="River") %>% 
-  group_by(Station) %>% 
-  summarize(mSal=mean(Sal))
+ctd <- read.csv("derived_BLE_insituCTD_2018to2019.csv") %>% 
+  mutate(date = as.Date(date_time), Station= station)
+
+ggplot(ctd, aes(date, salinity, group=instrument))+
+  geom_line(aes(color=instrument))+
+  geom_vline(data=data_means, aes(xintercept=mDate))+
+  facet_wrap(~Station)+
+  theme_cowplot()
 ```
 
 
