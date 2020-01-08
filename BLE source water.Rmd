@@ -130,18 +130,23 @@ data2 <- bind_cols(input,a2) %>%
 ```{r mean_plot, fig.height=8, fig.width=11}
 data_means <- bind_cols(input,a2) %>% 
   pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
-  group_by(Station, DepthCat, Habitat, Season, Source) %>% 
+  group_by(Lagoon, Station, DepthCat, Habitat, Season, Source) %>% 
   summarize(mFrac=mean(value))
 
-ggplot(data_means, aes(Station, mFrac))+
+data_means$DepthCat[is.na(data_means$DepthCat)] <- "surface"
+
+data_means %>% filter(Habitat!="River") %>% 
+  ggplot(aes(Station, mFrac))+
   geom_col(aes(fill = Source), position = position_stack(reverse = TRUE)) +
   coord_flip() +
-  facet_wrap(~Season*DepthCat*Habitat, scales="free")+
-  theme_cowplot()
+  facet_grid(Lagoon*Habitat ~ Season*DepthCat, scales="free")+
+  theme_cowplot()+
+  theme(strip.text.x = element_text(size = 8))
 ```
 
 ```{r table}
 table1 <- data_means %>%
+  mutate(mFrac=mFrac*100) %>% 
   pivot_wider(names_from=Source, values_from=mFrac)
 ```
 
