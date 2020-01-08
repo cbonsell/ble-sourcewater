@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(lubridate)
 library(cowplot)
+library(DT)
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
@@ -40,9 +41,9 @@ input$Habitat <- factor(input$Habitat, levels=c("River","Shallow","Deep"))
 input$Lagoon <- factor(input$Lagoon, levels=c("Elson","Simps","Steff","Kakto","Jago"))
 input$Station <- factor(input$Station, levels=c("AVR1","MYR1","NNR1",
                                             "EWLS1","EWLS2","EWLD1","EWLD2",
-                                            "EELS1","EELS2","EEL1","EELD2",
+                                            "EELS1","EELS2","EELD1","EELD2",
                                             "KUR1","SILS1","SILS2","SILD1","SILD2",
-                                            "SAR1","STLS1","STLS2","STL1","STLD2",
+                                            "SAR1","STLS1","STLS2","STLD1","STLD2",
                                             "KALS1","KALS2","KALD1","KALD2",
                                             "JAR1","JALS1","JALS2","JAL1","JALD2"))
 
@@ -68,7 +69,9 @@ ggplot(input, aes(Lagoon, delta_18O))+
   scale_fill_manual(values=Pal[c(1,10,20)])+
   theme_cowplot()
 ```
+
 ###Our river end members vary a lot by node: should we seperate the analyses?
+
 ```{r riverO, echo=FALSE, message=FALSE, warning=FALSE}
 input %>% filter (Habitat=="River") %>% 
   ggplot(aes(Station,delta_18O))+
@@ -76,6 +79,14 @@ input %>% filter (Habitat=="River") %>%
   scale_color_manual(values=Pal[c(1,20)])+
   facet_grid(.~Lagoon, scales="free")+
   theme_cowplot()
+
+input %>% filter (Habitat=="River") %>% 
+  group_by(Station) %>% 
+  summarize(mean_d18O=mean(delta_18O), sd=sd(delta_18O))
+
+input %>% filter (Habitat=="River") %>% 
+  group_by(Lagoon) %>% 
+  summarize(mean_d18O=mean(delta_18O), sd=sd(delta_18O))
 ```
 #mountain precip is more negative (bc high elevation is akin to higher latitude)
 
@@ -89,21 +100,17 @@ $SIM+MW+PML = 1$
 
 $5*SIM + 0*MW + 32.1*PML =  S$ 
 
-$-2.4*SIM + -22*MW + -3.5*PML = O$
+$-2*SIM + -22*MW + -3.5*PML = O$
 
 ```{r create_function, echo=FALSE, message=FALSE, warning=FALSE}
 
-
 calc_source <- function(S, O){
   
-  A <- matrix(data=c(1, 1, 1, 5, 0, 32.1, -2.4, -20.3, -3.5), nrow=3, ncol=3, byrow=TRUE)    
+  A <- matrix(data=c(1, 1, 1, 5, 0, 32.1, -2, -22, -3.5), nrow=3, ncol=3, byrow=TRUE)    
   b <- matrix(data=c(1, S, O), nrow=3, ncol=1, byrow=FALSE)
   
   x <- round(solve(A, b), 3)
-  
-  #tx <- t(x)
-  
-  #return(as.matrix(tx))
+
   return(x)
 }
 
@@ -140,7 +147,7 @@ data2 <- bind_cols(input,a2) %>%
 ```{r mean_plot, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=11}
 data_means <- bind_cols(input,a2) %>% 
   pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
-  group_by(Lagoon, Station, DepthCat, Habitat, Season, Source) %>% 
+  group_by(Lagoon, Station, DepthCat, Habitat, Season, Source, delta_18O) %>% 
   summarize(mFrac=mean(value))
 
 data_means %>% filter(Habitat!="River") %>% 
@@ -156,15 +163,19 @@ data_means %>% filter(Habitat!="River") %>%
 table1 <- data_means %>%
   mutate(mFrac=mFrac*100) %>% 
   pivot_wider(names_from=Source, values_from=mFrac)
+
+datatable(table1)
 ```
 
 ```{r table_ave, echo=FALSE, message=FALSE, warning=FALSE}
 table2 <- data_means %>% 
   filter(Habitat!="River") %>% 
-  group_by(Lagoon, DepthCat, Season, Source) %>% 
+  group_by(Lagoon, DepthCat, Season, Source, delta_18O) %>% 
   summarize(meanFrac=mean(mFrac))%>%
   mutate(meanFrac=meanFrac*100) %>% 
   pivot_wider(names_from=Source, values_from=meanFrac)
+
+datatable(table2)
 
 
 data_means %>% 
@@ -180,6 +191,7 @@ data_means %>%
 ```
 
 
+#rivers are a bit salty
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 input %>% filter(Habitat=="River") %>% 
