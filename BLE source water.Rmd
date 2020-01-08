@@ -12,7 +12,7 @@ library(lubridate)
 library(cowplot)
 ```
 
-```{r}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 YSI <- read_csv("All_BLE_Sonde_Data_2018_2019.csv", col_types = cols(date_time = col_date(format = "%m/%d/%Y"))) %>% 
   rename(Date_collected=date_time)
 #note; changed date of summer 2019 STL bc times near midnight and YSI was technically collected on a diff day than 18O
@@ -22,7 +22,7 @@ O18 <- read_csv("BLE LTER 18O.csv", col_types = cols(Date_collected = col_date(f
 
 ```
 
-```{r}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 input <- left_join(O18,YSI, by=c("Station"="station","Date_collected","WaterColumnDepth"="water_column_position")) %>% 
   select(Node, Lagoon, Station, Date_collected, DepthCat=WaterColumnDepth, Sal=sal, delta_18O) %>% 
   mutate(Season=case_when(month(Date_collected)==7|month(Date_collected)==8 ~ "Summer",
@@ -49,7 +49,7 @@ input$Station <- factor(input$Station, levels=c("AVR1","MYR1","NNR1",
 ```
 
 
-```{r}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
 Pal <- c('#625989', '#636591', '#657298', '#677f9f', '#6a8ba5', '#6e98aa', '#72a4ae', '#78b1b1', '#80bdb2', '#8ac9b0', '#96d6ac', '#a4e1a4', '#b7ed95', '#cef879', '#e4f361', '#cce75b', '#b8da55', '#a7cc4f', '#9abd48', '#91ae41', '#8a9f39', '#868f32', '#847e2a', '#836d21', '#835b19', '#834710', '#842f08', '#840000')
 
@@ -69,7 +69,7 @@ ggplot(input, aes(Lagoon, delta_18O))+
   theme_cowplot()
 ```
 ###Our river end members vary a lot by node: should we seperate the analyses?
-```{r riverO}
+```{r riverO, echo=FALSE, message=FALSE, warning=FALSE}
 input %>% filter (Habitat=="River") %>% 
   ggplot(aes(Station,delta_18O))+
   geom_jitter(aes(color=Season), size=3)+
@@ -91,7 +91,7 @@ $5*SIM + 0*MW + 32.1*PML =  S$
 
 $-2.4*SIM + -22*MW + -3.5*PML = O$
 
-```{r create_function}
+```{r create_function, echo=FALSE, message=FALSE, warning=FALSE}
 
 
 calc_source <- function(S, O){
@@ -109,7 +109,7 @@ calc_source <- function(S, O){
 
 ```
 
-```{r calculate_fractions}
+```{r calculate_fractions, echo=FALSE, message=FALSE, warning=FALSE}
 
 a <- matrix(ncol=3, nrow=nrow(input))
 for(i in 1:nrow(input)){
@@ -127,7 +127,7 @@ data <- bind_cols(input,a)
 
 ```
 
-```{r for_plot}
+```{r for_plot, echo=FALSE, message=FALSE, warning=FALSE}
 a2 <- as.data.frame(a, col.names=c("SIM","MW","PML"))
 
 colnames(a2)=c("SIM","MW","PML")
@@ -137,7 +137,7 @@ data2 <- bind_cols(input,a2) %>%
 
 ```
 
-```{r mean_plot, fig.height=8, fig.width=11}
+```{r mean_plot, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=11}
 data_means <- bind_cols(input,a2) %>% 
   pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
   group_by(Lagoon, Station, DepthCat, Habitat, Season, Source) %>% 
@@ -152,13 +152,13 @@ data_means %>% filter(Habitat!="River") %>%
   theme(strip.text.x = element_text(size = 8))
 ```
 
-```{r table}
+```{r table, echo=FALSE, message=FALSE, warning=FALSE}
 table1 <- data_means %>%
   mutate(mFrac=mFrac*100) %>% 
   pivot_wider(names_from=Source, values_from=mFrac)
 ```
 
-```{r table_ave}
+```{r table_ave, echo=FALSE, message=FALSE, warning=FALSE}
 table2 <- data_means %>% 
   filter(Habitat!="River") %>% 
   group_by(Lagoon, DepthCat, Season, Source) %>% 
@@ -181,7 +181,7 @@ data_means %>%
 
 
 
-```{r}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 input %>% filter(Habitat=="River") %>% 
   group_by(Station) %>% 
   summarize(mSal=mean(Sal))
