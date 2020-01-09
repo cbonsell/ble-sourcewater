@@ -84,9 +84,18 @@ input %>% filter (Habitat=="River") %>%
   group_by(Station) %>% 
   summarize(mean_d18O=mean(delta_18O), sd=sd(delta_18O))
 
-input %>% filter (Habitat=="River") %>% 
+#add ave river value as column
+riv_vals <- input %>% filter (Habitat=="River") %>% 
   group_by(Lagoon) %>% 
-  summarize(mean_d18O=mean(delta_18O), sd=sd(delta_18O))
+  summarize(riv_d18O=mean(delta_18O), sd=sd(delta_18O))
+
+datatable(riv_vals)
+
+input <- left_join(input,riv_vals) %>% 
+  select(-sd) 
+
+input$riv_d18O[input$Lagoon=="Kakto"] <-  -21.4
+
 ```
 #mountain precip is more negative (bc high elevation is akin to higher latitude)
 
@@ -107,16 +116,18 @@ $SIM+MW+PML = 1$
 
 $5*SIM + 0*MW + 32.1*PML =  S$ 
 
-$-2*SIM + -22*MW + -3.5*PML = O$
+$-2*SIM + x*MW + -3.5*PML = O$
+
+where $x$ is the value for meltwater of rivers associated with a particular lagoon
 
 ```{r create_function, echo=FALSE, message=FALSE, warning=FALSE}
 
-calc_source <- function(S, O){
+calc_source <- function(S, O, mw){
   
-  A <- matrix(data=c(1, 1, 1, 5, 0, 32.1, -2, -22, -3.5), nrow=3, ncol=3, byrow=TRUE)    
-  b <- matrix(data=c(1, S, O), nrow=3, ncol=1, byrow=FALSE)
+  A <- matrix(data=c(1, 1, 1, 5, 0, 32.1, -2, mw, -3.5), nrow=3, ncol=3, byrow=TRUE)    
+  B <- matrix(data=c(1, S, O), nrow=3, ncol=1, byrow=FALSE)
   
-  x <- round(solve(A, b), 3)
+  x <- round(solve(A, B), 3)
 
   return(x)
 }
@@ -125,12 +136,12 @@ calc_source <- function(S, O){
 
 ```{r calculate_fractions, echo=FALSE, message=FALSE, warning=FALSE}
 
-a <- matrix(ncol=3, nrow=nrow(input))
+sources <- matrix(ncol=3, nrow=nrow(input))
 for(i in 1:nrow(input)){
-  a[i,] <- calc_source(input$Sal[i], input$delta_18O[i])
+  sources[i,] <- calc_source(input$Sal[i], input$delta_18O[i], input$riv_d18O[i])
 }
 
-a <- as.data.frame(a)
+a <- as.data.frame(sources)
 
 colnames(a)=c("SIM","MW","PML")
 
@@ -154,12 +165,13 @@ data2 <- bind_cols(input,a2) %>%
 ```{r mean_plot, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=11}
 data_means <- bind_cols(input,a2) %>% 
   pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
-  group_by(Lagoon, Station, DepthCat, Habitat, Season, Source, delta_18O) %>% 
+  group_by(Lagoon, Station, DepthCat, Habitat, Season, Source, delta_18O, Sal) %>% 
   summarize(mFrac=mean(value), mDate=mean(Date_collected))
 
 data_means %>% filter(Habitat!="River") %>% 
   ggplot(aes(Station, mFrac))+
   geom_col(aes(fill = Source), position = position_stack(reverse = TRUE)) +
+  geom_hline(yintercept=c(0,1))+
   coord_flip() +
   facet_grid(Lagoon*Habitat ~ Season*DepthCat, scales="free")+
   theme_cowplot()+
