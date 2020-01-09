@@ -17,10 +17,11 @@ library(DT)
 YSI <- read_csv("All_BLE_Sonde_Data_2018_2019.csv", col_types = cols(date_time = col_date(format = "%m/%d/%Y"))) %>% 
   rename(Date_collected=date_time)
 #note; changed date of summer 2019 STL bc times near midnight and YSI was technically collected on a diff day than 18O
+YSI$water_column_position[is.na(YSI$water_column_position)] <- "surface"
 
 O18 <- read_csv("BLE LTER 18O.csv", col_types = cols(Date_collected = col_date(format = "%m/%d/%Y"))) %>% 
   arrange(Date_collected, Station)
-
+O18$WaterColumnDepth[is.na(O18$WaterColumnDepth)] <- "surface"
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
@@ -31,11 +32,10 @@ input <- left_join(O18,YSI, by=c("Station"="station","Date_collected","WaterColu
                           month(Date_collected)==4 ~ "Under-ice"),
          Habitat= case_when(grepl("R", Station) ~ "River",
                             grepl("D", Station) ~ "Deep",
-                            TRUE ~"Shallow"))%>%
-  drop_na(-DepthCat)
+                            TRUE ~"Shallow")) %>% 
+  drop_na(Station)
 
 
-input$DepthCat[is.na(input$DepthCat)] <- "surface"
 input$DepthCat <- factor(input$DepthCat, levels=c("surface","bottom"))
 input$Habitat <- factor(input$Habitat, levels=c("River","Shallow","Deep"))
 input$Lagoon <- factor(input$Lagoon, levels=c("Elson","Simps","Steff","Kakto","Jago"))
@@ -61,13 +61,6 @@ ggplot(input, aes(Sal, delta_18O))+
   scale_color_manual(values=Pal[c(1,10,20)])+
   theme_cowplot()
 
-#need to figure out WHICH June EELS2 is which
-
-ggplot(input, aes(Lagoon, delta_18O))+
-  geom_jitter(aes(color=Season), width = 0.2)+
-  facet_grid(Habitat*DepthCat~., scales="free")+
-  scale_fill_manual(values=Pal[c(1,10,20)])+
-  theme_cowplot()
 ```
 
 ###Our river end members vary a lot by node: should we seperate the analyses?
@@ -102,7 +95,7 @@ input$riv_d18O[input$Lagoon=="Kakto"] <-  -21.4
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 input %>% filter(Habitat=="River") %>% 
   group_by(Station) %>% 
-  summarize(mSal=mean(Sal))
+  summarize(mSal=mean(Sal, na.rm=T))
 ```
 
 
@@ -146,8 +139,6 @@ colnames(a)=c("SIM","MW","PML")
 data <- bind_cols(input,a)
 
 
-
-
 ```
 
 ```{r for_plot, echo=FALSE, message=FALSE, warning=FALSE}
@@ -164,7 +155,7 @@ data2 <- bind_cols(input,a2) %>%
 data_means <- bind_cols(input,a2) %>% 
   pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
   group_by(Lagoon, Station, DepthCat, Habitat, Season, Source, delta_18O, Sal) %>% 
-  summarize(mFrac=mean(value), mDate=mean(Date_collected))
+  summarize(mFrac=mean(value, na.rm=T), mDate=mean(Date_collected))
 
 data_means %>% filter(Habitat!="River") %>% 
   ggplot(aes(Station, mFrac))+
@@ -188,7 +179,7 @@ datatable(table1)
 table2 <- data_means %>% 
   filter(Habitat!="River") %>% 
   group_by(Lagoon, DepthCat, Season, Source, delta_18O) %>% 
-  summarize(meanFrac=mean(mFrac))%>%
+  summarize(meanFrac=mean(mFrac, na.rm=T))%>%
   mutate(meanFrac=meanFrac*100) %>% 
   pivot_wider(names_from=Source, values_from=meanFrac)
 
@@ -264,15 +255,15 @@ mixingplot <- function(m,lagoon){
   
   
   ggplot(input[input$Lagoon==lagoon,], aes(Sal, delta_18O))+
-    geom_abline(slope= mod_sim0$coefficients[[2]],intercept = mod_sim0$coefficients[[1]])+
-    geom_abline(slope= mod_sim25$coefficients[[2]],intercept = mod_sim25$coefficients[[1]])+
-    geom_abline(slope= mod_sim50$coefficients[[2]],intercept = mod_sim50$coefficients[[1]])+
-    geom_abline(slope= mod_sim75$coefficients[[2]],intercept = mod_sim75$coefficients[[1]])+
-    geom_abline(color="grey",slope= mod_MW0$coefficients[[2]],intercept = mod_MW0$coefficients[[1]])+
-    geom_abline(color="grey",slope= mod_MW25$coefficients[[2]],intercept = mod_MW25$coefficients[[1]])+
-    geom_abline(color="grey",slope= mod_MW50$coefficients[[2]],intercept = mod_MW50$coefficients[[1]])+
-    geom_abline(color="grey",slope= mod_MW75$coefficients[[2]],intercept = mod_MW75$coefficients[[1]])+
-    geom_point(aes(color=Season, shape=Habitat), size=3, alpha=.7)+
+    geom_abline(color="grey1", linetype=2,slope= mod_sim0$coefficients[[2]],intercept = mod_sim0$coefficients[[1]])+
+    geom_abline(color="grey20", linetype=2,slope= mod_sim25$coefficients[[2]],intercept = mod_sim25$coefficients[[1]])+
+    geom_abline(color="grey40", linetype=2,slope= mod_sim50$coefficients[[2]],intercept = mod_sim50$coefficients[[1]])+
+    geom_abline(color="grey60", linetype=2,slope= mod_sim75$coefficients[[2]],intercept = mod_sim75$coefficients[[1]])+
+    geom_abline(color="grey1",slope= mod_MW0$coefficients[[2]],intercept = mod_MW0$coefficients[[1]])+
+    geom_abline(color="grey20",slope= mod_MW25$coefficients[[2]],intercept = mod_MW25$coefficients[[1]])+
+    geom_abline(color="grey40",slope= mod_MW50$coefficients[[2]],intercept = mod_MW50$coefficients[[1]])+
+    geom_abline(color="grey60",slope= mod_MW75$coefficients[[2]],intercept = mod_MW75$coefficients[[1]])+
+    geom_point(aes(color=Season, shape=DepthCat), size=3, alpha=.7)+
     scale_color_manual(values=Pal[c(1,10,20)])+
     theme_cowplot()+
     scale_y_continuous(breaks=seq(-24,-4,4))+
@@ -286,18 +277,20 @@ mixingplot <- function(m,lagoon){
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #plot
-mixingplot(-12.6,"Elson")+
+mixingplot(-12.9,"Elson")+
   ggtitle("Elson")
 
-mixingplot(-17.3, "Simps")+
+mixingplot(-17.35, "Simps")+
   ggtitle("Simpson")
 
-mixingplot(-20.2, "Steff")+
+mixingplot(-20.25, "Steff")+
   ggtitle("Stefansson Sound")
 
 mixingplot(-21.4, "Jago")+
   ggtitle("Jago")
 
+mixingplot(-21.4, "Kakto")+
+  ggtitle("Kaktovik")
 ```
 
 
