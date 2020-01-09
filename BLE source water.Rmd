@@ -45,7 +45,7 @@ input$Station <- factor(input$Station, levels=c("AVR1","MYR1","NNR1",
                                             "KUR1","SILS1","SILS2","SILD1","SILD2",
                                             "SAR1","STLS1","STLS2","STLD1","STLD2",
                                             "KALS1","KALS2","KALD1","KALD2",
-                                            "JAR1","JALS1","JALS2","JAL1","JALD2"))
+                                            "JAR1","JALS1","JALS2","JALD1","JALD2"))
 
 ```
 
@@ -80,9 +80,6 @@ input %>% filter (Habitat=="River") %>%
   facet_grid(.~Lagoon, scales="free")+
   theme_cowplot()
 
-input %>% filter (Habitat=="River") %>% 
-  group_by(Station) %>% 
-  summarize(mean_d18O=mean(delta_18O), sd=sd(delta_18O))
 
 #add ave river value as column
 riv_vals <- input %>% filter (Habitat=="River") %>% 
@@ -97,6 +94,7 @@ input <- left_join(input,riv_vals) %>%
 input$riv_d18O[input$Lagoon=="Kakto"] <-  -21.4
 
 ```
+
 #mountain precip is more negative (bc high elevation is akin to higher latitude)
 
 #rivers are also a bit salty
@@ -203,8 +201,9 @@ data_means %>%
   summarize(meanFrac=mean(mFrac))%>%
   ggplot(aes(Lagoon, meanFrac))+
   geom_col(aes(fill = Source), position = position_stack(reverse = TRUE)) +
+  geom_hline(yintercept=c(0,1))+
   coord_flip() +
-  facet_grid(DepthCat~Season, scales="free")+
+  facet_grid(DepthCat~Season)+
   theme_cowplot()+
   theme(strip.text.x = element_text(size = 8))
 ```
@@ -222,6 +221,83 @@ ggplot(ctd, aes(date, salinity, group=instrument))+
   geom_vline(data=data_means, aes(xintercept=mDate))+
   facet_wrap(~Station)+
   theme_cowplot()
+```
+
+mixing plot
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#create functions
+
+mat <- data.frame("range_SIM" = c(0,0,100,75,75,50,50,25,25,
+                                  10,10,10)/100,
+                "range_MW" = c(100,0,0,25,0,50,0,75,0,
+                               75,50,25)/100)
+
+
+mat$range_PML <- abs(1-mat$range_SIM-mat$range_MW)
+
+
+calc_s <- function(SIM, MW, PML){
+  s <- (SIM*5)+(MW*0)+(PML*32.1)
+  s
+}
+
+calc_o <- function(SIM, MW, PML,m){
+  o <- (SIM*-2.5)+(MW*m)+(PML*-3.5)
+  o
+}
+
+mixingplot <- function(m,lagoon){
+  mat$sal <- calc_s(mat$range_SIM,mat$range_MW,mat$range_PML)
+  mat$o18 <- calc_o(mat$range_SIM,mat$range_MW,mat$range_PML, m)
+  
+  mod_sim0 <-lm(mat$o18[mat$range_SIM==0]~mat$sal[mat$range_SIM==0]) 
+  mod_sim25 <-lm(mat$o18[mat$range_SIM==.25]~mat$sal[mat$range_SIM==.25]) 
+  mod_sim50 <-lm(mat$o18[mat$range_SIM==.50]~mat$sal[mat$range_SIM==.50]) 
+  mod_sim75 <-lm(mat$o18[mat$range_SIM==.75]~mat$sal[mat$range_SIM==.75]) 
+  
+  mod_MW0 <-lm(mat$o18[mat$range_MW==0]~mat$sal[mat$range_MW==0]) 
+  mod_MW25 <-lm(mat$o18[mat$range_MW==.25]~mat$sal[mat$range_MW==.25]) 
+  mod_MW50 <-lm(mat$o18[mat$range_MW==.50]~mat$sal[mat$range_MW==.50]) 
+  mod_MW75 <-lm(mat$o18[mat$range_MW==.75]~mat$sal[mat$range_MW==.75]) 
+  
+  
+  ggplot(input[input$Lagoon==lagoon,], aes(Sal, delta_18O))+
+    geom_abline(slope= mod_sim0$coefficients[[2]],intercept = mod_sim0$coefficients[[1]])+
+    geom_abline(slope= mod_sim25$coefficients[[2]],intercept = mod_sim25$coefficients[[1]])+
+    geom_abline(slope= mod_sim50$coefficients[[2]],intercept = mod_sim50$coefficients[[1]])+
+    geom_abline(slope= mod_sim75$coefficients[[2]],intercept = mod_sim75$coefficients[[1]])+
+    geom_abline(color="grey",slope= mod_MW0$coefficients[[2]],intercept = mod_MW0$coefficients[[1]])+
+    geom_abline(color="grey",slope= mod_MW25$coefficients[[2]],intercept = mod_MW25$coefficients[[1]])+
+    geom_abline(color="grey",slope= mod_MW50$coefficients[[2]],intercept = mod_MW50$coefficients[[1]])+
+    geom_abline(color="grey",slope= mod_MW75$coefficients[[2]],intercept = mod_MW75$coefficients[[1]])+
+    geom_point(aes(color=Season, shape=Habitat), size=3, alpha=.7)+
+    scale_color_manual(values=Pal[c(1,10,20)])+
+    theme_cowplot()+
+    scale_y_continuous(breaks=seq(-24,-4,4))+
+    xlab("Salinity")+
+    ylab(~ paste(delta ^ 18, "O ", ("%"[0])))
+  
+}
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#plot
+mixingplot(-12.6,"Elson")+
+  ggtitle("Elson")
+
+mixingplot(-17.3, "Simps")+
+  ggtitle("Simpson")
+
+mixingplot(-20.2, "Steff")+
+  ggtitle("Stefansson Sound")
+
+mixingplot(-21.4, "Jago")+
+  ggtitle("Jago")
+
 ```
 
 
