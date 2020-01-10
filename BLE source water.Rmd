@@ -92,14 +92,6 @@ input$riv_d18O[input$Lagoon=="Kakto"] <-  -21.4
 
 #mountain precip is more negative (bc high elevation is akin to higher latitude)
 
-#rivers are also a bit salty
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-input %>% filter(Habitat=="River") %>% 
-  group_by(Station) %>% 
-  summarize(mSal=mean(Sal, na.rm=T))
-```
-
 
 ##Endmembers from Alkire and Trefrey 2006
 ![](AlkireandTrefrey endmembers.png)
@@ -197,19 +189,6 @@ data_means %>%
   ggplot(aes(Drainage, meanFrac))+
   geom_col(aes(fill = Source), position = position_stack(reverse = TRUE)) +
   scale_fill_manual(values=c('#698d16', '#3582d1', '#46d2df'))+
-  geom_hline(yintercept=c(0,1))+
-  coord_flip() +
-  facet_grid(DepthCat~Season)+
-  theme_cowplot()+
-  theme(strip.text.x = element_text(size = 8))
-
-data_means %>% 
-  filter(Habitat!="River", !is.na(Drainage)) %>% 
-  group_by(Drainage, DepthCat, Season, Source) %>% 
-  summarize(meanFrac=mean(mFrac))%>%
-  ggplot(aes(Drainage, meanFrac))+
-  geom_col(aes(fill = Source), position = position_stack(reverse = TRUE)) +
-  scale_fill_manual(values=c('#698d16', '#3582d1', '#46d2df'))+
   geom_text(aes(label = round(meanFrac*100)), size = 3, position = position_stack(vjust = 0.5))+ 
   geom_hline(yintercept=c(0,1))+
   coord_flip() +
@@ -219,7 +198,7 @@ data_means %>%
 ```
 
 plot mean by lagoon with error bar
-```{r}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 drain_means <- bind_cols(input,a2) %>% 
   pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
   filter(Habitat!="River", !is.na(Drainage)) %>% 
