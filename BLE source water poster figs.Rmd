@@ -1,0 +1,319 @@
+---
+title: "BLE source water figs for poster"
+author: "Christina Bonsell and Emily Bristol"
+date: "November 1, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(cowplot)
+library(DT)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+YSI <- read_csv("All_BLE_Sonde_Data_2018_2019.csv", col_types = cols(date_time = col_date(format = "%m/%d/%Y"))) %>% 
+  rename(Date_collected=date_time)
+#note; changed date of summer 2019 STL bc times near midnight and YSI was technically collected on a diff day than 18O
+YSI$water_column_position[is.na(YSI$water_column_position)] <- "surface"
+
+O18 <- read_csv("BLE LTER 18O.csv", col_types = cols(Date_collected = col_date(format = "%m/%d/%Y"))) %>% 
+  arrange(Date_collected, Station)
+O18$WaterColumnDepth[is.na(O18$WaterColumnDepth)] <- "surface"
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+input <- left_join(O18,YSI, by=c("Station"="station","Date_collected","WaterColumnDepth"="water_column_position")) %>% 
+  select(Node, Drainage, Lagoon, Station, Date_collected, DepthCat=WaterColumnDepth, Sal=sal, delta_18O) %>% 
+  mutate(Season=case_when(month(Date_collected)==7|month(Date_collected)==8 ~ "Summer",
+                          month(Date_collected)==6 ~ "Break-up",
+                          month(Date_collected)==4 ~ "Under-ice"),
+         Habitat= case_when(grepl("R", Station) ~ "River",
+                            grepl("D", Station) ~ "Deep",
+                            TRUE ~"Shallow")) %>% 
+  drop_na(Station)
+
+
+input$DepthCat <- factor(input$DepthCat, levels=c("surface","bottom"))
+input$Habitat <- factor(input$Habitat, levels=c("River","Shallow","Deep"))
+input$Lagoon <- factor(input$Lagoon, levels=c("Elson","Simps","Stef","Kakto","Jago"))
+input$Drainage <- factor(input$Drainage, levels=c("Elson_W","Elson_E","Simps","Stef","Kakto","Jago"),
+                         labels=c("Elson West", "Elson East", "Simpson", "Stefansson", "Kaktovik", "Jago"))
+input$Station <- factor(input$Station, levels=c("AVR1","MYR1","NNR1",
+                                            "EWLS1","EWLS2","EWLD1","EWLD2",
+                                            "EELS1","EELS2","EELD1","EELD2",
+                                            "KUR1","SILS1","SILS2","SILD1","SILD2",
+                                            "SAR1","STLS1","STLS2","STLD1","STLD2",
+                                            "KALS1","KALS2","KALD1","KALD2",
+                                            "JAR1","JALS1","JALS2","JALD1","JALD2"))
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+Pal <- c('#625989', '#636591', '#657298', '#677f9f', '#6a8ba5', '#6e98aa', '#72a4ae', '#78b1b1', '#80bdb2', '#8ac9b0', '#96d6ac', '#a4e1a4', '#b7ed95', '#cef879', '#e4f361', '#cce75b', '#b8da55', '#a7cc4f', '#9abd48', '#91ae41', '#8a9f39', '#868f32', '#847e2a', '#836d21', '#835b19', '#834710', '#842f08', '#840000')
+
+```
+
+###River endmembers differ
+
+```{r riverO, echo=FALSE, message=FALSE, warning=FALSE}
+input %>% filter (Habitat=="River") %>% 
+  mutate(Station = recode(Station, AVR1="Avak Cr.", MYR1="Mayo. R.", NNR1="unkn R.",
+         KUR1="Kup. R.", SAR1= "Sag. R.", JAR1="Jago R.")) %>% 
+  ggplot(aes(Station,delta_18O))+
+  geom_point(aes(color=Season), size=3)+
+  scale_color_manual(values=Pal[c(1,20)])+
+  facet_grid(.~Lagoon, scales="free")+
+  theme_cowplot()+
+  ylab(~ paste(delta ^ 18, "O ", ("%"[0])))+
+  xlab("")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  ggtitle("Meltwater endmember values differ by lagoon")
+
+
+#add ave river value as column
+riv_vals <- input %>% filter (Habitat=="River") %>% 
+  group_by(Lagoon) %>% 
+  summarize(riv_d18O=mean(delta_18O), sd=sd(delta_18O))
+
+datatable(riv_vals)
+
+input <- left_join(input,riv_vals) %>% 
+  select(-sd) 
+
+input$riv_d18O[input$Lagoon=="Kakto"] <-  -21.4
+
+```
+
+methods:
+
+
+$SIM+MW+PML = 1$
+
+$5*SIM + 0*MW + 32.1*PML =  S$ 
+
+$-2*SIM + x*MW + -3.5*PML = O$
+
+where $x$ is the value for meltwater of rivers associated with a particular lagoon
+
+```{r create_function, echo=FALSE, message=FALSE, warning=FALSE}
+
+calc_source <- function(S, O, mw){
+  
+  A <- matrix(data=c(1, 1, 1, 5, 0, 32.1, -2, mw, -3.5), nrow=3, ncol=3, byrow=TRUE)    
+  B <- matrix(data=c(1, S, O), nrow=3, ncol=1, byrow=FALSE)
+  
+  x <- round(solve(A, B), 3)
+
+  return(x)
+}
+
+```
+
+```{r calculate_fractions, echo=FALSE, message=FALSE, warning=FALSE}
+
+sources <- matrix(ncol=3, nrow=nrow(input))
+for(i in 1:nrow(input)){
+  sources[i,] <- calc_source(input$Sal[i], input$delta_18O[i], input$riv_d18O[i])
+}
+
+a <- as.data.frame(sources)
+
+colnames(a)=c("SIM","MW","PML")
+
+data <- bind_cols(input,a)
+
+
+```
+
+```{r for_plot, echo=FALSE, message=FALSE, warning=FALSE}
+a2 <- as.data.frame(a, col.names=c("SIM","MW","PML"))
+
+colnames(a2)=c("SIM","MW","PML")
+
+data2 <- bind_cols(input,a2) %>% 
+  pivot_longer(cols=SIM:PML, names_to = "Source")
+
+```
+
+```{r means, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=11}
+data_means <- bind_cols(input,a2) %>% 
+  pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
+  group_by(Lagoon, Drainage, Station, DepthCat, Habitat, Season, Source, delta_18O, Sal) %>% 
+  summarize(mFrac=mean(value, na.rm=T), sdFrac=sd(value, na.rm=T), mDate=mean(Date_collected))
+
+```
+
+#Which of these do we like better??
+##(will be sliced and diced to put next to salinity timeseries plots)
+
+```{r plotwnums, echo=FALSE, message=FALSE, warning=FALSE}
+
+data_means %>% 
+  filter(Habitat!="River", !is.na(Drainage)) %>% 
+  group_by(Drainage, DepthCat, Season, Source) %>% 
+  summarize(meanFrac=mean(mFrac))%>%
+  ggplot(aes(Drainage, meanFrac))+
+  geom_col(aes(fill = Source), position = position_stack(reverse = TRUE)) +
+  scale_fill_manual(values=c('#698d16', '#3582d1', '#46d2df'))+
+  geom_text(aes(label = round(meanFrac*100)), size = 3, position = position_stack(vjust = 0.5))+ 
+  geom_hline(yintercept=c(0,1))+
+  coord_flip() +
+  facet_grid(DepthCat~Season)+
+  theme_cowplot()+
+  theme(strip.text.x = element_text(size = 8))
+```
+
+plot mean by lagoon with error bar
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+drain_means <- bind_cols(input,a2) %>% 
+  pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
+  filter(Habitat!="River", !is.na(Drainage)) %>% 
+  group_by(Drainage, DepthCat,Season, Source) %>% 
+  summarize(mFrac=mean(value, na.rm=T), sdFrac=sd(value, na.rm=T), mDate=mean(Date_collected)) %>% 
+  mutate(ci_l=mFrac-sdFrac, ci_u=mFrac+sdFrac)
+
+
+#change confidence interval location to go with stacked barplot
+drain_means$ci_l[drain_means$Source == "PML"] <- with(drain_means,ci_l[Source == "PML"] +
+                                                        ci_l[Source == "MW"])
+drain_means$ci_u[drain_means$Source == "PML"] <- with(drain_means,ci_u[Source == "PML"] +
+                                                        ci_u[Source == "MW"])
+drain_means$ci_l[drain_means$Source == "SIM"] <- ifelse(drain_means$mFrac[drain_means$Source=="SIM"]<0, 0,
+                                                        with(drain_means,ci_l[Source == "PML"] +ci_l[Source == "SIM"]))
+drain_means$ci_u[drain_means$Source == "SIM"] <- ifelse(drain_means$mFrac[drain_means$Source=="SIM"]<0, 0,
+                                                        with(drain_means,ci_u[Source == "PML"] + ci_u[Source == "SIM"]))
+
+
+drain_means %>% 
+  ggplot(aes(Drainage, mFrac*100))+
+  geom_col(aes(fill = Source), position = position_stack(reverse = T)) +
+  scale_fill_manual(values=c('#698d16', '#3582d1', '#46d2df'))+
+  geom_errorbar(aes(ymin = ci_l*100, ymax = ci_u*100), width=0, 
+                stat="identity")+
+  coord_flip(ylim=c(0,100)) +
+  geom_hline(yintercept=c(0,100))+
+  facet_grid(Drainage*DepthCat~Season, scales="free")+
+  theme_cowplot()+
+  ylab("% Contribution")+
+  xlab("")
+
+```
+
+
+
+##Salinity data vs timepoints of sampling
+###needs work
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ctd <- read.csv("derived_BLE_insituCTD_2018to2019.csv") %>% 
+  mutate(date = as.Date(date_time), Station= station)
+
+pts <- ctd %>%
+  right_join(data_means, by=c("station"="Station", "date"="mDate"))
+
+ggplot(ctd, aes(date, salinity))+
+  geom_line(aes(color=instrument))+
+  geom_vline(data=pts, aes(xintercept=date)) +
+  facet_wrap(~Station)+
+  theme_cowplot()
+
+
+```
+
+mixing plot
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#create functions
+
+mat <- data.frame("range_SIM" = c(0,0,100,75,75,50,50,25,25,
+                                  10,10,10)/100,
+                "range_MW" = c(100,0,0,25,0,50,0,75,0,
+                               75,50,25)/100)
+
+
+mat$range_PML <- abs(1-mat$range_SIM-mat$range_MW)
+
+
+calc_s <- function(SIM, MW, PML){
+  s <- (SIM*5)+(MW*0)+(PML*32.1)
+  s
+}
+
+calc_o <- function(SIM, MW, PML,m){
+  o <- (SIM*-2.5)+(MW*m)+(PML*-3.5)
+  o
+}
+
+mixingplot <- function(m,lagoon){
+  mat$sal <- calc_s(mat$range_SIM,mat$range_MW,mat$range_PML)
+  mat$o18 <- calc_o(mat$range_SIM,mat$range_MW,mat$range_PML, m)
+  
+  mod_sim0 <-lm(mat$o18[mat$range_SIM==0]~mat$sal[mat$range_SIM==0]) 
+  mod_sim25 <-lm(mat$o18[mat$range_SIM==.25]~mat$sal[mat$range_SIM==.25]) 
+  mod_sim50 <-lm(mat$o18[mat$range_SIM==.50]~mat$sal[mat$range_SIM==.50]) 
+  mod_sim75 <-lm(mat$o18[mat$range_SIM==.75]~mat$sal[mat$range_SIM==.75]) 
+  
+  mod_MW0 <-lm(mat$o18[mat$range_MW==0]~mat$sal[mat$range_MW==0]) 
+  mod_MW25 <-lm(mat$o18[mat$range_MW==.25]~mat$sal[mat$range_MW==.25]) 
+  mod_MW50 <-lm(mat$o18[mat$range_MW==.50]~mat$sal[mat$range_MW==.50]) 
+  mod_MW75 <-lm(mat$o18[mat$range_MW==.75]~mat$sal[mat$range_MW==.75]) 
+  
+  
+  ggplot(input[input$Lagoon==lagoon & input$Habitat!="River",], aes(Sal, delta_18O))+
+    geom_abline(color="grey1", linetype=2,slope= mod_sim0$coefficients[[2]],intercept = mod_sim0$coefficients[[1]])+
+    geom_abline(color="grey20", linetype=2,slope= mod_sim25$coefficients[[2]],intercept = mod_sim25$coefficients[[1]])+
+    geom_abline(color="grey40", linetype=2,slope= mod_sim50$coefficients[[2]],intercept = mod_sim50$coefficients[[1]])+
+    geom_abline(color="grey60", linetype=2,slope= mod_sim75$coefficients[[2]],intercept = mod_sim75$coefficients[[1]])+
+    geom_abline(color="grey1",slope= mod_MW0$coefficients[[2]],intercept = mod_MW0$coefficients[[1]])+
+    geom_abline(color="grey20",slope= mod_MW25$coefficients[[2]],intercept = mod_MW25$coefficients[[1]])+
+    geom_abline(color="grey40",slope= mod_MW50$coefficients[[2]],intercept = mod_MW50$coefficients[[1]])+
+    geom_abline(color="grey60",slope= mod_MW75$coefficients[[2]],intercept = mod_MW75$coefficients[[1]])+
+    geom_point(aes(color=Season, shape=DepthCat), size=3, alpha=.7)+
+    scale_color_manual(values=Pal[c(1,10,20)])+
+    theme_cowplot()+
+    scale_y_continuous(breaks=seq(-24,-4,4))+
+    xlab("Salinity")+
+    ylab(~ paste(delta ^ 18, "O ", ("%"[0])))
+  
+}
+
+```
+
+need line labels
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#plot
+mixingplot(-12.9,"Elson")+
+  ylim(c(-20,0))+
+  xlim(c(0,40))+
+  ggtitle("Elson")
+
+mixingplot(-17.35, "Simps")+
+ ylim(c(-20,0))+
+  xlim(c(0,40))+
+  ggtitle("Simpson")
+
+mixingplot(-20.25, "Stef")+
+  ylim(c(-20,0))+
+  xlim(c(0,40))+
+  ggtitle("Stefansson Sound")
+
+m <- mixingplot(-21.4, "Jago")
+
+m+
+  ylim(c(-20,0))+
+  xlim(c(0,40))+
+  geom_point(data=input[input$Lagoon=="Kakto",],aes(Sal, delta_18O, color=Season, shape=DepthCat), size=3, alpha=.7)+
+  ggtitle("Jago + Kaktovik")
+
+# mixingplot(-21.4, "Kakto")+
+#   ggtitle("Kaktovik")
+```
+
+
