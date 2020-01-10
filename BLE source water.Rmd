@@ -69,11 +69,17 @@ ggplot(input, aes(Sal, delta_18O))+
 
 ```{r riverO, echo=FALSE, message=FALSE, warning=FALSE}
 input %>% filter (Habitat=="River") %>% 
+  mutate(Station = recode(Station, AVR1="Avak Cr.", MYR1="Mayo. R.", NNR1="unkn R.",
+         KUR1="Kup. R.", SAR1= "Sag. R.", JAR1="Jago R.")) %>% 
   ggplot(aes(Station,delta_18O))+
-  geom_jitter(aes(color=Season), size=3)+
+  geom_point(aes(color=Season), size=3)+
   scale_color_manual(values=Pal[c(1,20)])+
   facet_grid(.~Lagoon, scales="free")+
-  theme_cowplot()
+  theme_cowplot()+
+  ylab(~ paste(delta ^ 18, "O ", ("%"[0])))+
+  xlab("")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  ggtitle("Meltwater endmember values differ by lagoon")
 
 
 #add ave river value as column
