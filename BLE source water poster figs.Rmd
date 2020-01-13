@@ -36,7 +36,8 @@ input <- left_join(O18,YSI, by=c("Station"="station","Date_collected","WaterColu
   drop_na(Station)
 
 
-input$DepthCat <- factor(input$DepthCat, levels=c("surface","bottom"))
+input$DepthCat <- factor(input$DepthCat, levels=c("surface","bottom"), 
+                         labels=c("surface (<0.3 m)","near-bottom"))
 input$Habitat <- factor(input$Habitat, levels=c("River","Shallow","Deep"))
 input$Lagoon <- factor(input$Lagoon, levels=c("Elson","Simps","Stef","Kakto","Jago"))
 input$Drainage <- factor(input$Drainage, levels=c("Elson_W","Elson_E","Simps","Stef","Kakto","Jago"),
@@ -60,7 +61,7 @@ Pal <- c('#625989', '#636591', '#657298', '#677f9f', '#6a8ba5', '#6e98aa', '#72a
 
 ###River endmembers differ
 
-```{r riverO, echo=FALSE, message=FALSE, warning=FALSE}
+```{r riverO, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5}
 input %>% filter (Habitat=="River") %>% 
   mutate(Station = recode(Station, AVR1="Avak Cr.", MYR1="Mayo. R.", NNR1="unkn R.",
          KUR1="Kup. R.", SAR1= "Sag. R.", JAR1="Jago R.")) %>% 
@@ -98,7 +99,7 @@ $5*SIM + 0*MW + 32.1*PML =  S$
 
 $-2*SIM + x*MW + -3.5*PML = O$
 
-where $x$ is the value for meltwater of rivers associated with a particular lagoon
+where $x$ is the value for rivers associated with a particular lagoon
 
 ```{r create_function, echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -159,11 +160,11 @@ data_means %>%
   summarize(meanFrac=mean(mFrac))%>%
   ggplot(aes(Drainage, meanFrac))+
   geom_col(aes(fill = Source), position = position_stack(reverse = TRUE)) +
-  scale_fill_manual(values=c('#698d16', '#3582d1', '#46d2df'))+
+  scale_fill_manual(values=c('#84c64d', '#409e93', '#4e6cb2'))+
   geom_text(aes(label = round(meanFrac*100)), size = 3, position = position_stack(vjust = 0.5))+ 
   geom_hline(yintercept=c(0,1))+
   coord_flip() +
-  facet_grid(DepthCat~Season)+
+  facet_grid(Drainage*DepthCat~Season, scales="free")+
   theme_cowplot()+
   theme(strip.text.x = element_text(size = 8))
 ```
@@ -192,7 +193,7 @@ drain_means$ci_u[drain_means$Source == "SIM"] <- ifelse(drain_means$mFrac[drain_
 drain_means %>% 
   ggplot(aes(Drainage, mFrac*100))+
   geom_col(aes(fill = Source), position = position_stack(reverse = T)) +
-  scale_fill_manual(values=c('#698d16', '#3582d1', '#46d2df'))+
+  scale_fill_manual(values=c('#84c64d', '#409e93', '#4e6cb2'))+
   geom_errorbar(aes(ymin = ci_l*100, ymax = ci_u*100), width=0, 
                 stat="identity")+
   coord_flip(ylim=c(0,100)) +
@@ -209,20 +210,60 @@ drain_means %>%
 ##Salinity data vs timepoints of sampling
 ###needs work
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=10}
 ctd <- read.csv("derived_BLE_insituCTD_2018to2019.csv") %>% 
   mutate(date = as.Date(date_time), Station= station)
 
 pts <- ctd %>%
   right_join(data_means, by=c("station"="Station", "date"="mDate"))
 
-ggplot(ctd, aes(date, salinity))+
-  geom_line(aes(color=instrument))+
-  geom_vline(data=pts, aes(xintercept=date)) +
-  facet_wrap(~Station)+
-  theme_cowplot()
+mytheme <-theme(axis.text.x = element_text(angle = 45, hjust = 1, size=18),
+        axis.text.y=element_text(size=18),
+        axis.title=element_text(size=20),
+        plot.title=element_text(size=24,face="bold"))
 
+ctd %>% group_by(station, date) %>% 
+  summarize(mSal=mean(salinity, na.rm=T)) %>% 
+  filter(station=="EELD2") %>% 
+  ggplot(aes(date, mSal))+
+  geom_line(size=1)+
+  geom_vline(data=pts[pts$Drainage=="Elson East",], aes(xintercept=date), size=2, color='#2e2056', alpha=.5)+
+  theme_cowplot()+
+  ylim(c(0,45))+
+  ylab("Salinity")+
+  xlab("")+
+  scale_x_date(breaks="2 months", date_labels="%b")+
+  mytheme+
+  ggtitle("Elson East")
+  
 
+ctd %>% group_by(station, date) %>% 
+  summarize(mSal=mean(salinity, na.rm=T)) %>% 
+  filter(station=="KALD2") %>% 
+  ggplot(aes(date, mSal))+
+  geom_line(size=1)+
+  geom_vline(data=pts[pts$Lagoon=="Kakto",], aes(xintercept=date), size=1.5, color='#2e2056', alpha=.5)+
+  theme_cowplot()+
+  ylim(c(0,45))+
+  ylab("Salinity")+
+  xlab("")+
+  scale_x_date(breaks="2 months", date_labels="%b")+
+  mytheme+
+  ggtitle("Kaktovik")
+
+ctd %>% group_by(station, date) %>% 
+  summarize(mSal=mean(salinity, na.rm=T)) %>% 
+  filter(station=="JALD2") %>% 
+  ggplot(aes(date, mSal))+
+  geom_line(size=1)+
+  geom_vline(data=pts[pts$Lagoon=="Jago",], aes(xintercept=date), size=1.5, color='#2e2056', alpha=.5)+
+  theme_cowplot()+
+  ylim(c(0,45))+
+  ylab("Salinity")+
+  xlab("")+
+  scale_x_date(breaks="2 months", date_labels="%b")+
+  mytheme+
+  ggtitle("Jago")
 ```
 
 mixing plot
@@ -274,12 +315,17 @@ mixingplot <- function(m,lagoon){
     geom_abline(color="grey20",slope= mod_MW25$coefficients[[2]],intercept = mod_MW25$coefficients[[1]])+
     geom_abline(color="grey40",slope= mod_MW50$coefficients[[2]],intercept = mod_MW50$coefficients[[1]])+
     geom_abline(color="grey60",slope= mod_MW75$coefficients[[2]],intercept = mod_MW75$coefficients[[1]])+
-    geom_point(aes(color=Season, shape=DepthCat), size=3, alpha=.7)+
+    geom_point(aes(color=Season, shape=DepthCat), size=4, alpha=0.8)+
     scale_color_manual(values=Pal[c(1,10,20)])+
     theme_cowplot()+
     scale_y_continuous(breaks=seq(-24,-4,4))+
     xlab("Salinity")+
-    ylab(~ paste(delta ^ 18, "O ", ("%"[0])))
+    ylab(~ paste(delta ^ 18, "O ", ("%"[0])))+
+    labs(shape="Sampling Depth")+
+    theme(axis.text.y=element_text(size=18),
+        axis.title=element_text(size=20),
+        plot.title=element_text(size=24,face="bold"))
+
   
 }
 
@@ -287,7 +333,7 @@ mixingplot <- function(m,lagoon){
 
 need line labels
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=6}
 #plot
 mixingplot(-12.9,"Elson")+
   ylim(c(-20,0))+
