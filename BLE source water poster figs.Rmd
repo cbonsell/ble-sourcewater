@@ -300,11 +300,19 @@ mixingplot <- function(m,lagoon){
   mod_sim50 <-lm(mat$o18[mat$range_SIM==.50]~mat$sal[mat$range_SIM==.50]) 
   mod_sim75 <-lm(mat$o18[mat$range_SIM==.75]~mat$sal[mat$range_SIM==.75]) 
   
+  SIMlab <- data.frame(y=c(-0.1,-0.1,-0.1,-0.1), x=c((-0.1-mod_sim0$coefficients[[1]])/mod_sim0$coefficients[[2]],                                                  (-0.1-mod_sim25$coefficients[[1]])/mod_sim25$coefficients[[2]],                                                     (-0.1-mod_sim50$coefficients[[1]])/mod_sim50$coefficients[[2]],                                                     (-0.1-mod_sim75$coefficients[[1]])/mod_sim75$coefficients[[2]]),
+                       label = c("0%","25%","50%","75%"))
+  
   mod_MW0 <-lm(mat$o18[mat$range_MW==0]~mat$sal[mat$range_MW==0]) 
   mod_MW25 <-lm(mat$o18[mat$range_MW==.25]~mat$sal[mat$range_MW==.25]) 
   mod_MW50 <-lm(mat$o18[mat$range_MW==.50]~mat$sal[mat$range_MW==.50]) 
   mod_MW75 <-lm(mat$o18[mat$range_MW==.75]~mat$sal[mat$range_MW==.75]) 
   
+  MWlab <- data.frame(x=c(40,40,40,40), y=c(40*mod_MW0$coefficients[[2]]+mod_MW0$coefficients[[1]],
+                                            40*mod_MW25$coefficients[[2]]+mod_MW25$coefficients[[1]],
+                                            40*mod_MW50$coefficients[[2]]+mod_MW50$coefficients[[1]],
+                                            40*mod_MW75$coefficients[[2]]+mod_MW75$coefficients[[1]]),
+                      label = c("0%","25%","50%","75%"))
   
   ggplot(input[input$Lagoon==lagoon & input$Habitat!="River",], aes(Sal, delta_18O))+
     geom_abline(color="grey1", linetype=2,slope= mod_sim0$coefficients[[2]],intercept = mod_sim0$coefficients[[1]])+
@@ -315,6 +323,8 @@ mixingplot <- function(m,lagoon){
     geom_abline(color="grey20",slope= mod_MW25$coefficients[[2]],intercept = mod_MW25$coefficients[[1]])+
     geom_abline(color="grey40",slope= mod_MW50$coefficients[[2]],intercept = mod_MW50$coefficients[[1]])+
     geom_abline(color="grey60",slope= mod_MW75$coefficients[[2]],intercept = mod_MW75$coefficients[[1]])+
+    geom_text(data= MWlab, aes(x=x,y=y, label = label))+
+    geom_text(data= SIMlab, aes(x=x,y=y, label = label))+
     geom_point(aes(color=Season, shape=DepthCat), size=4, alpha=0.8)+
     scale_color_manual(values=Pal[c(1,10,20)])+
     theme_cowplot()+
@@ -323,9 +333,11 @@ mixingplot <- function(m,lagoon){
     ylab(~ paste(delta ^ 18, "O ", ("%"[0])))+
     labs(shape="Sampling Depth")+
     theme(axis.text.y=element_text(size=18),
-        axis.title=element_text(size=20),
-        plot.title=element_text(size=24,face="bold"))
-
+          axis.text.x=element_text(size=16),
+          axis.title=element_text(size=20),
+          plot.title=element_text(size=24,face="bold"))+
+    panel_border()
+  
   
 }
 
@@ -338,16 +350,22 @@ need line labels
 mixingplot(-12.9,"Elson")+
   ylim(c(-20,0))+
   xlim(c(0,40))+
+  scale_y_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="   % meteoric water"))+
+  scale_x_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="     % sea ice melt"))+
   ggtitle("Elson")
 
 mixingplot(-17.35, "Simps")+
  ylim(c(-20,0))+
   xlim(c(0,40))+
+  scale_y_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="   % meteoric water"))+
+  scale_x_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="     % sea ice melt"))+
   ggtitle("Simpson")
 
 mixingplot(-20.25, "Stef")+
   ylim(c(-20,0))+
   xlim(c(0,40))+
+  scale_y_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="   % meteoric water"))+
+  scale_x_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="     % sea ice melt"))+
   ggtitle("Stefansson Sound")
 
 m <- mixingplot(-21.4, "Jago")
@@ -356,6 +374,8 @@ m+
   ylim(c(-20,0))+
   xlim(c(0,40))+
   geom_point(data=input[input$Lagoon=="Kakto",],aes(Sal, delta_18O, color=Season, shape=DepthCat), size=3, alpha=.7)+
+  scale_y_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="   % meteoric water"))+
+  scale_x_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="     % sea ice melt"))+
   ggtitle("Jago + Kaktovik")
 
 # mixingplot(-21.4, "Kakto")+
