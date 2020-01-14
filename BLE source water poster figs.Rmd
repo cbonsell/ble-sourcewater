@@ -373,7 +373,7 @@ m <- mixingplot(-21.4, "Jago")
 m+
   ylim(c(-20,0))+
   xlim(c(0,40))+
-  geom_point(data=input[input$Lagoon=="Kakto",],aes(Sal, delta_18O, color=Season, shape=DepthCat), size=3, alpha=.7)+
+  geom_point(data=input[input$Lagoon=="Kakto",],aes(Sal, delta_18O, color=Season, shape=DepthCat), size=4, alpha=.7)+
   scale_y_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="   % meteoric water"))+
   scale_x_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="     % sea ice melt"))+
   ggtitle("Jago + Kaktovik")
