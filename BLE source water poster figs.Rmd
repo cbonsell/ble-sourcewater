@@ -95,9 +95,9 @@ methods:
 
 $SIM+MW+PML = 1$
 
-$5*SIM + 0*MW + 32.1*PML =  S$ 
+$5*SIM + 0*MW + 32.1*PML =  Salinity$ 
 
-$-2*SIM + x*MW + -3.5*PML = O$
+$-2*SIM + x*MW + -3.5*PML = \delta ^{18}O>$
 
 where $x$ is the value for rivers associated with a particular lagoon
 
@@ -126,12 +126,6 @@ a <- as.data.frame(sources)
 
 colnames(a)=c("SIM","MW","PML")
 
-a <- a %>% mutate(PML=case_when(PML>SIM&PML>MW&SIM<0&MW>=0 ~ PML+SIM,
-                                PML>SIM&PML>MW&MW<0&SIM>=0 ~PML+MW,
-                                PML>SIM&PML>MW&MW<0&SIM<0 ~PML+MW+SIM,
-                                TRUE ~PML))
-                  #                  MW=case_when(MW>SIM&MW>PML))
-
 data <- bind_cols(input,a)
 
 
@@ -159,6 +153,14 @@ data_means <- bind_cols(input,a2) %>%
 ##(will be sliced and diced to put next to salinity timeseries plots)
 
 ```{r plotwnums, echo=FALSE, message=FALSE, warning=FALSE}
+
+
+# a <- a %>% mutate(PML=case_when(PML>MW&SIM<0&MW>=0 ~ PML+SIM,
+#                                 PML>SIM&MW<0&SIM>=0 ~PML+MW,
+#                                 MW<0&SIM<0 ~PML+MW+SIM,
+#                                 TRUE ~PML))
+#                   #                  MW=case_when(MW>SIM&MW>PML))
+
 
 data_means %>% 
   filter(Habitat!="River", !is.na(Drainage)) %>% 
