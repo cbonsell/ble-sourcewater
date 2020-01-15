@@ -126,6 +126,12 @@ a <- as.data.frame(sources)
 
 colnames(a)=c("SIM","MW","PML")
 
+a <- a %>% mutate(PML=case_when(PML>SIM&PML>MW&SIM<0&MW>=0 ~ PML+SIM,
+                                PML>SIM&PML>MW&MW<0&SIM>=0 ~PML+MW,
+                                PML>SIM&PML>MW&MW<0&SIM<0 ~PML+MW+SIM,
+                                TRUE ~PML))
+                  #                  MW=case_when(MW>SIM&MW>PML))
+
 data <- bind_cols(input,a)
 
 
