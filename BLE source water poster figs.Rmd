@@ -72,8 +72,7 @@ input %>% filter (Habitat=="River") %>%
   theme_cowplot()+
   ylab(~ paste(delta ^ 18, "O ", ("%"[0])))+
   xlab("")+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-  ggtitle("Meltwater endmember values differ by lagoon")
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
 #add ave river value as column
@@ -97,7 +96,7 @@ $SIM+MW+PML = 1$
 
 $5*SIM + 0*MW + 32.1*PML =  Salinity$ 
 
-$-2*SIM + x*MW + -3.5*PML = \delta ^{18}O>$
+$-2*SIM + x*MW + -3.5*PML = \delta ^{18}O$
 
 where $x$ is the value for rivers associated with a particular lagoon
 
@@ -351,7 +350,6 @@ mixingplot <- function(m,lagoon){
 
 ```
 
-need line labels
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=6}
 #plot
