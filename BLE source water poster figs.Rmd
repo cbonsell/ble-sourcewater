@@ -1,7 +1,7 @@
 ---
-title: "BLE source water figs for poster"
+title: "Beaufort Lagoon source waters - poster"
 author: "Christina Bonsell and Emily Bristol"
-date: "November 1, 2019"
+date: "Jan 18, 2020"
 output: html_document
 ---
 
@@ -59,7 +59,21 @@ Pal <- c('#625989', '#636591', '#657298', '#677f9f', '#6a8ba5', '#6e98aa', '#72a
 
 ```
 
-###River endmembers differ
+###The Beaufort Lagoon Ecosystems Long-Term Ecological Research program ([BLE LTER](ble.lternet.edu)) samples lagoons and coastal areas across the Beaufort Sea coast
+
+
+###We have 4 stations per lagoon system, two in shallow reaches of the lagoon (<1m), and two in deeper areas (>3m). We also sample major freshwater inflows associated with each lagoon. 
+
+###These lagoons exhibit large variability in salinity over the year. What causes this?
+
+###To find out, we used salinity and 
+$\delta ^{18}O$ 
+###of lagoon waters sampled in April (full sea ice cover), June(sea ice break-up), and August (open water summer) to determine the relative contribution of sea ice melt (SIM), marine Polar Mixed Layer (PML), and meteoric water (MW) to these dynamic lagoons. Each of these endmembers has distinct salinity and 
+$\delta ^{18}O$
+###values. 
+
+$\delta ^{18}O$
+###of MW actually varies longitudinally, as seen by the pattern in freshwater inflow samples, here with stations ordered west->east:
 
 ```{r riverO, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5}
 input %>% filter (Habitat=="River") %>% 
@@ -80,6 +94,7 @@ riv_vals <- input %>% filter (Habitat=="River") %>%
   group_by(Lagoon) %>% 
   summarize(riv_d18O=mean(delta_18O), sd=sd(delta_18O))
 
+#Make kable
 datatable(riv_vals)
 
 input <- left_join(input,riv_vals) %>% 
@@ -89,7 +104,7 @@ input$riv_d18O[input$Lagoon=="Kakto"] <-  -21.4
 
 ```
 
-methods:
+###We solved the following system of equations for each lagoon water sample:
 
 
 $SIM+MW+PML = 1$
