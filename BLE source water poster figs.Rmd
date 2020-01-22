@@ -97,7 +97,28 @@ ctd %>%
 
 ##What causes this?
 
-###To find out, we used salinity and $\delta ^{18}O$ of lagoon waters sampled in April (full sea ice cover), June (sea ice break-up), and August (open water summer) to determine the relative contribution of sea ice melt (SIM), marine Polar Mixed Layer (PML), and meteoric water (MW) to these dynamic lagoons. Each of these endmembers has distinct salinity and $\delta ^{18}O$ values. 
+###To find out, we used salinity and $\delta ^{18}O$ of lagoon waters sampled in April (full sea ice cover), June (sea ice break-up), and August (open water summer). Explore the data in the plot below:
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,}
+plotdat <- ungroup(input) %>% filter(Habitat!="River")
+
+inputplot <- ggplot(plotdat, aes(Sal, delta_18O, color=DepthCat, fill=Season, group=Station))+
+  geom_point(shape=21, size=2, alpha=0.8)+
+  scale_fill_manual(values=Pal[c(1,10,20)])+
+  scale_color_manual(values=c("grey","black"))+
+  scale_y_continuous(breaks=seq(-24,-4,4))+
+  theme_minimal()+
+  facet_wrap(~Lagoon)+
+  xlab("Salinity")+
+  labs(shape="Sampling Depth")
+
+p <- ggplotly(inputplot, tooltip=c("Sal","delta_18O","Station")) 
+p
+
+```
+
+
+###We used the distinct salinity and $\delta ^{18}O$ values of sea ice melt (SIM), marine Polar Mixed Layer (PML), and meteoric water (MW) to determine the relative contribution of each endmember to these dynamic lagoons.
 
 ### $\delta ^{18}O$ of MW actually varies longitudinally, as seen by the pattern in freshwater inflow samples, here with stations ordered west->east:
 
@@ -142,7 +163,7 @@ $5*SIM + 0*MW + 32.1*PML =  Salinity$
 
 $-2*SIM + x*MW + -3.5*PML = \delta ^{18}O$
 
-where $x$ is the value for rivers associated with a particular lagoon (see above table)
+where $x$ is the mean value for rivers associated with a particular lagoon (see above table)
 
 ```{r create_function, echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -192,7 +213,12 @@ data_means <- bind_cols(input,a2) %>%
 
 ```
 
+###When each sample is visualized in
 ###At break-up, both SIM and MW usually contribute to the large drops in salinity, but it varies by lagoon system
+
+
+
+
 ```{r mixing_funtions, echo=FALSE, message=FALSE, warning=FALSE}
 
 #create functions
@@ -271,12 +297,13 @@ mixingplot <- function(m,lagoon){
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=6}
 #plot
-mixingplot(-12.9,"Elson")+
+ mixingplot(-12.9,"Elson")+
   ylim(c(-20,0))+
   xlim(c(0,40))+
   scale_y_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="   % meteoric water"))+
   scale_x_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="     % sea ice melt"))+
   ggtitle("Elson")
+
 
 mixingplot(-17.35, "Simps")+
  ylim(c(-20,0))+
