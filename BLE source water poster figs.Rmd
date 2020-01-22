@@ -214,7 +214,16 @@ data_means <- bind_cols(input,a2) %>%
 ```
 
 ###The results of our mixing model (below) show how source waters stratify and/or mix in each lagoon over the year. 
-Values beyond 100 are due to hypersalinity in the winter, caused by brine exclusion during sea ice formation. This causes salinity to go beyond the end-member value. 
+
+##There are some interesting differences between lagoons, for example:
+
+* Elson West at break up has runoff throughout the water column, while other stations are very stratified.
+* Unexpected runoff water (MW) in surface waters of Stefansson Sound under the sea ice in April, due to a warm March in the upper reaches of the Sagavanirktok River watershed.
+
+##Note that summer 2019 was a very low sea ice year for the Beaufort Sea, which may be reflected in the low proportion of sea ice melt water during summer in the lagoons.
+
+
+Error bars are SD. Values beyond 100 are due to hypersalinity in the winter, caused by brine exclusion during sea ice formation. This causes salinity to go beyond the end-member value. 
 
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=9}
@@ -256,6 +265,86 @@ drain_means %>%
 
 ```
 
+
+#Only looking at shallow stations
+```{r, echo=FALSE, message=FALSE, warning=FALSE,}
+drain_means <- bind_cols(input,a2) %>% 
+  pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
+  filter(Habitat=="Shallow", !is.na(Drainage)) %>% 
+  group_by(Drainage, DepthCat,Season, Source) %>% 
+  summarize(mFrac=mean(value, na.rm=T), sdFrac=sd(value, na.rm=T), mDate=mean(Date_collected)) %>% 
+  mutate(ci_l=mFrac-sdFrac, ci_u=mFrac+sdFrac)
+
+
+drain_means$DepthCat = with(drain_means, factor(DepthCat, levels = rev(levels(DepthCat))))
+
+#change confidence interval location to go with stacked barplot
+drain_means$ci_l[drain_means$Source == "PML"] <- with(drain_means,ci_l[Source == "PML"] +
+                                                        ci_l[Source == "MW"])
+drain_means$ci_u[drain_means$Source == "PML"] <- with(drain_means,ci_u[Source == "PML"] +
+                                                        ci_u[Source == "MW"])
+drain_means$ci_l[drain_means$Source == "SIM"] <- ifelse(drain_means$mFrac[drain_means$Source=="SIM"]<0, 0,
+                                                        with(drain_means,ci_l[Source == "PML"] +ci_l[Source == "SIM"]))
+drain_means$ci_u[drain_means$Source == "SIM"] <- ifelse(drain_means$mFrac[drain_means$Source=="SIM"]<0, 0,
+                                                        with(drain_means,ci_u[Source == "PML"] + ci_u[Source == "SIM"]))
+
+
+drain_means %>% 
+  ggplot(aes(Drainage, mFrac*100))+
+  geom_col(aes(fill = Source), position = position_stack(reverse = T)) +
+  scale_fill_manual(values=c('#84c64d', '#409e93', '#4e6cb2'))+
+  geom_errorbar(aes(ymin = ci_l*100, ymax = ci_u*100), width=0, 
+                stat="identity")+
+  coord_flip(ylim=c(0,100)) +
+  geom_hline(yintercept=c(0,100))+
+  facet_grid(~Season, scales="free")+
+  theme_cowplot()+
+  ylab("% Contribution")+
+  xlab("")+
+  theme(strip.text.x = element_text(size = 10),
+        strip.text.y = element_text(size = 10))
+
+```
+
+#Only looking at deep stations
+```{r, echo=FALSE, message=FALSE, warning=FALSE,}
+drain_means <- bind_cols(input,a2) %>% 
+  pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
+  filter(Habitat=="Deep", !is.na(Drainage)) %>% 
+  group_by(Drainage, DepthCat,Season, Source) %>% 
+  summarize(mFrac=mean(value, na.rm=T), sdFrac=sd(value, na.rm=T), mDate=mean(Date_collected)) %>% 
+  mutate(ci_l=mFrac-sdFrac, ci_u=mFrac+sdFrac)
+
+
+drain_means$DepthCat = with(drain_means, factor(DepthCat, levels = rev(levels(DepthCat))))
+
+#change confidence interval location to go with stacked barplot
+drain_means$ci_l[drain_means$Source == "PML"] <- with(drain_means,ci_l[Source == "PML"] +
+                                                        ci_l[Source == "MW"])
+drain_means$ci_u[drain_means$Source == "PML"] <- with(drain_means,ci_u[Source == "PML"] +
+                                                        ci_u[Source == "MW"])
+drain_means$ci_l[drain_means$Source == "SIM"] <- ifelse(drain_means$mFrac[drain_means$Source=="SIM"]<0, 0,
+                                                        with(drain_means,ci_l[Source == "PML"] +ci_l[Source == "SIM"]))
+drain_means$ci_u[drain_means$Source == "SIM"] <- ifelse(drain_means$mFrac[drain_means$Source=="SIM"]<0, 0,
+                                                        with(drain_means,ci_u[Source == "PML"] + ci_u[Source == "SIM"]))
+
+
+drain_means %>% 
+  ggplot(aes(Drainage, mFrac*100))+
+  geom_col(aes(fill = Source), position = position_stack(reverse = T)) +
+  scale_fill_manual(values=c('#84c64d', '#409e93', '#4e6cb2'))+
+  geom_errorbar(aes(ymin = ci_l*100, ymax = ci_u*100), width=0, 
+                stat="identity")+
+  coord_flip(ylim=c(0,100)) +
+  geom_hline(yintercept=c(0,100))+
+  facet_grid(~Season, scales="free")+
+  theme_cowplot()+
+  ylab("% Contribution")+
+  xlab("")+
+  theme(strip.text.x = element_text(size = 10),
+        strip.text.y = element_text(size = 10))
+
+```
 
 ##What have we learned?
 
