@@ -11,6 +11,9 @@ library(tidyverse)
 library(lubridate)
 library(cowplot)
 library(DT)
+library(knitr)
+library(kableExtra)
+library(plotly)
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
@@ -99,7 +102,7 @@ ctd %>%
 ### $\delta ^{18}O$ of MW actually varies longitudinally, as seen by the pattern in freshwater inflow samples, here with stations ordered west->east:
 
 ```{r riverO, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=5}
-input %>% filter (Habitat=="River") %>% 
+rivplot <- input %>% filter (Habitat=="River") %>% 
   mutate(Station = recode(Station, AVR1="Avak Cr.", MYR1="Mayo. R.", NNR1="unkn R.",
          KUR1="Kup. R.", SAR1= "Sag. R.", JAR1="Jago R.")) %>% 
   ggplot(aes(Station,delta_18O))+
@@ -111,6 +114,8 @@ input %>% filter (Habitat=="River") %>%
   xlab("")+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+rivplot
+
 
 #add ave river value as column
 riv_vals <- input %>% filter (Habitat=="River") %>% 
@@ -118,7 +123,8 @@ riv_vals <- input %>% filter (Habitat=="River") %>%
   summarize(riv_d18O=mean(delta_18O), sd=sd(delta_18O))
 
 #Make kable
-datatable(riv_vals)
+kable(riv_vals, digits=2) %>% 
+  kable_styling(full_width=F, position="left")
 
 input <- left_join(input,riv_vals) %>% 
   select(-sd) 
@@ -136,7 +142,7 @@ $5*SIM + 0*MW + 32.1*PML =  Salinity$
 
 $-2*SIM + x*MW + -3.5*PML = \delta ^{18}O$
 
-where $x$ is the value for rivers associated with a particular lagoon
+where $x$ is the value for rivers associated with a particular lagoon (see above table)
 
 ```{r create_function, echo=FALSE, message=FALSE, warning=FALSE}
 
