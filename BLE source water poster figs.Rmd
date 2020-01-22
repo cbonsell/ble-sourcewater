@@ -67,12 +67,15 @@ Pal <- c('#625989', '#636591', '#657298', '#677f9f', '#6a8ba5', '#6e98aa', '#72a
 
 ###We have 4 stations per lagoon system, two in shallow reaches of the lagoon (<1m), and two in deeper areas (>3m). We also sample major freshwater inflows associated with each lagoon. 
 
-###These lagoons exhibit large variability in salinity over the year. What causes this?
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-mytheme <-theme(axis.text.x = element_text(angle = 45, hjust = 1, size=18),
-        axis.text.y=element_text(size=18),
-        axis.title=element_text(size=20),
-        plot.title=element_text(size=24,face="bold"))
+###These lagoons exhibit large variability in **salinity** over the year.
+
+(no data for EELD1)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=4}
+mytheme <-theme(axis.text.x = element_text(angle = 45, hjust = 1, size=12),
+        axis.text.y=element_text(size=14),
+        axis.title=element_text(size=16))
+
 
 ctd %>% 
   filter(station!="EELD1", flags_condsal!="INV") %>% 
@@ -80,8 +83,8 @@ ctd %>%
   summarize(mSal=mean(salinity, na.rm=T))%>%  
   ggplot(aes(date, mSal))+
   geom_line(size=1)+
-  facet_wrap(~station)+
-  theme_cowplot()+
+  facet_wrap(~station, nrow=2, drop=F)+
+  theme_minimal_hgrid(12)+
   ylim(c(0,45))+
   ylab("Salinity")+
   xlab("")+
@@ -89,8 +92,7 @@ ctd %>%
   mytheme
 ```
 
-
-
+##What causes this?
 
 ###To find out, we used salinity and $\delta ^{18}O$ of lagoon waters sampled in April (full sea ice cover), June (sea ice break-up), and August (open water summer) to determine the relative contribution of sea ice melt (SIM), marine Polar Mixed Layer (PML), and meteoric water (MW) to these dynamic lagoons. Each of these endmembers has distinct salinity and $\delta ^{18}O$ values. 
 
