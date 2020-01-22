@@ -213,11 +213,142 @@ data_means <- bind_cols(input,a2) %>%
 
 ```
 
-###When each sample is visualized in
-###At break-up, both SIM and MW usually contribute to the large drops in salinity, but it varies by lagoon system
+###The results of our mixing model (below) show how source waters stratify and/or mix in each lagoon over the year. 
+Values beyond 100 are due to hypersalinity in the winter, caused by brine exclusion during sea ice formation. This causes salinity to go beyond the end-member value. 
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=9}
+drain_means <- bind_cols(input,a2) %>% 
+  pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
+  filter(Habitat!="River", !is.na(Drainage)) %>% 
+  group_by(Drainage, DepthCat,Season, Source) %>% 
+  summarize(mFrac=mean(value, na.rm=T), sdFrac=sd(value, na.rm=T), mDate=mean(Date_collected)) %>% 
+  mutate(ci_l=mFrac-sdFrac, ci_u=mFrac+sdFrac)
+
+
+drain_means$DepthCat = with(drain_means, factor(DepthCat, levels = rev(levels(DepthCat))))
+
+#change confidence interval location to go with stacked barplot
+drain_means$ci_l[drain_means$Source == "PML"] <- with(drain_means,ci_l[Source == "PML"] +
+                                                        ci_l[Source == "MW"])
+drain_means$ci_u[drain_means$Source == "PML"] <- with(drain_means,ci_u[Source == "PML"] +
+                                                        ci_u[Source == "MW"])
+drain_means$ci_l[drain_means$Source == "SIM"] <- ifelse(drain_means$mFrac[drain_means$Source=="SIM"]<0, 0,
+                                                        with(drain_means,ci_l[Source == "PML"] +ci_l[Source == "SIM"]))
+drain_means$ci_u[drain_means$Source == "SIM"] <- ifelse(drain_means$mFrac[drain_means$Source=="SIM"]<0, 0,
+                                                        with(drain_means,ci_u[Source == "PML"] + ci_u[Source == "SIM"]))
+
+
+drain_means %>% 
+  ggplot(aes(DepthCat, mFrac*100))+
+  geom_col(aes(fill = Source), position = position_stack(reverse = T)) +
+  scale_fill_manual(values=c('#84c64d', '#409e93', '#4e6cb2'))+
+  geom_errorbar(aes(ymin = ci_l*100, ymax = ci_u*100), width=0, 
+                stat="identity")+
+  coord_flip(ylim=c(0,100)) +
+  geom_hline(yintercept=c(0,100))+
+  facet_grid(Drainage~Season, scales="free")+
+  theme_cowplot()+
+  ylab("% Contribution")+
+  xlab("")+
+  theme(strip.text.x = element_text(size = 10),
+        strip.text.y = element_text(size = 10))
+
+```
+
+
+##What have we learned?
+
+*At break-up, both SIM and MW usually contribute to the large drops in salinity, but it varies by lagoon system
 
 
 
+#Other figures used in poster
+
+```{r plotwnums, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+data_means %>% 
+  filter(Habitat!="River", !is.na(Drainage)) %>% 
+  group_by(Drainage, DepthCat, Season, Source) %>% 
+  summarize(meanFrac=mean(mFrac))%>%
+  ggplot(aes(DepthCat, meanFrac))+
+  geom_col(aes(fill = Source), position = position_stack(reverse = TRUE)) +
+  scale_fill_manual(values=c('#84c64d', '#409e93', '#4e6cb2'))+
+  geom_text(aes(label = round(meanFrac*100)), size = 3, position = position_stack(vjust = 0.5))+ 
+  geom_hline(yintercept=c(0,1))+
+  coord_flip() +
+  facet_grid(Drainage~Season, scales="free")+
+  theme_cowplot()+
+  ylab("")+
+  xlab("mean contribution(%)")+
+  theme(strip.text.x = element_text(size = 10),
+        strip.text.y = element_text(size = 10))
+```
+
+
+
+
+
+##Salinity data vs timepoints of sampling
+###needs work
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=10}
+
+pts <- ctd %>%
+  right_join(data_means, by=c("station"="Station", "date"="mDate"))
+
+mytheme <-theme(axis.text.x = element_text(angle = 45, hjust = 1, size=18),
+        axis.text.y=element_text(size=18),
+        axis.title=element_text(size=20),
+        plot.title=element_text(size=24,face="bold"))
+
+
+ctd_val <- ctd %>% filter(flags_condsal!="INV")%>%
+  group_by(station, date) %>% 
+  summarize(mSal=mean(salinity, na.rm=T)) 
+
+ctd_val%>% 
+  filter(station=="EELD2") %>% 
+  ggplot(aes(date, mSal))+
+  geom_line(size=1)+
+  geom_vline(data=pts[pts$Drainage=="Elson East",], aes(xintercept=date), size=2, color='#2e2056', alpha=.5)+
+  theme_cowplot()+
+  ylim(c(0,45))+
+  ylab("Salinity")+
+  xlab("")+
+  scale_x_date(breaks="2 months", date_labels="%b")+
+  mytheme+
+  ggtitle("Elson East")
+  
+
+ctd_val%>% 
+  filter(station=="KALD2") %>% 
+  ggplot(aes(date, mSal))+
+  geom_line(size=1)+
+  geom_vline(data=pts[pts$Lagoon=="Kakto",], aes(xintercept=date), size=1.5, color='#2e2056', alpha=.5)+
+  theme_cowplot()+
+  ylim(c(0,45))+
+  ylab("Salinity")+
+  xlab("")+
+  scale_x_date(breaks="2 months", date_labels="%b")+
+  mytheme+
+  ggtitle("Kaktovik")
+
+ctd_val%>% 
+  filter(station=="JALD2") %>% 
+  ggplot(aes(date, mSal))+
+  geom_line(size=1)+
+  geom_vline(data=pts[pts$Lagoon=="Jago",], aes(xintercept=date), size=1.5, color='#2e2056', alpha=.5)+
+  theme_cowplot()+
+  ylim(c(0,45))+
+  ylab("Salinity")+
+  xlab("")+
+  scale_x_date(breaks="2 months", date_labels="%b")+
+  mytheme+
+  ggtitle("Jago")
+```
+
+mixing plot
 
 ```{r mixing_funtions, echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -293,164 +424,6 @@ mixingplot <- function(m,lagoon){
 }
 
 ```
-
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=6}
-#plot
- mixingplot(-12.9,"Elson")+
-  ylim(c(-20,0))+
-  xlim(c(0,40))+
-  scale_y_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="   % meteoric water"))+
-  scale_x_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="     % sea ice melt"))+
-  ggtitle("Elson")
-
-
-mixingplot(-17.35, "Simps")+
- ylim(c(-20,0))+
-  xlim(c(0,40))+
-  scale_y_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="   % meteoric water"))+
-  scale_x_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="     % sea ice melt"))+
-  ggtitle("Simpson")
-
-mixingplot(-20.25, "Stef")+
-  ylim(c(-20,0))+
-  xlim(c(0,40))+
-  scale_y_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="   % meteoric water"))+
-  scale_x_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="     % sea ice melt"))+
-  ggtitle("Stefansson Sound")
-
-m <- mixingplot(-21.4, "Jago")
-
-m+
-  ylim(c(-20,0))+
-  xlim(c(0,40))+
-  geom_point(data=input[input$Lagoon=="Kakto",],aes(Sal, delta_18O, color=Season, shape=DepthCat), size=4, alpha=.7)+
-  scale_y_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="   % meteoric water"))+
-  scale_x_continuous(sec.axis=dup_axis(label=NULL, breaks=NULL, name="     % sea ice melt"))+
-  ggtitle("Jago + Kaktovik")
-
-# mixingplot(-21.4, "Kakto")+
-#   ggtitle("Kaktovik")
-```
-
-
-#Figures used in poster
-
-```{r plotwnums, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
-
-data_means %>% 
-  filter(Habitat!="River", !is.na(Drainage)) %>% 
-  group_by(Drainage, DepthCat, Season, Source) %>% 
-  summarize(meanFrac=mean(mFrac))%>%
-  ggplot(aes(Drainage, meanFrac))+
-  geom_col(aes(fill = Source), position = position_stack(reverse = TRUE)) +
-  scale_fill_manual(values=c('#84c64d', '#409e93', '#4e6cb2'))+
-  geom_text(aes(label = round(meanFrac*100)), size = 3, position = position_stack(vjust = 0.5))+ 
-  geom_hline(yintercept=c(0,1))+
-  coord_flip() +
-  facet_grid(Drainage*DepthCat~Season, scales="free")+
-  theme_cowplot()+
-  theme(strip.text.x = element_text(size = 8))
-```
-
-plot mean by lagoon with error bar
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-drain_means <- bind_cols(input,a2) %>% 
-  pivot_longer(cols=SIM:PML, names_to = "Source") %>% 
-  filter(Habitat!="River", !is.na(Drainage)) %>% 
-  group_by(Drainage, DepthCat,Season, Source) %>% 
-  summarize(mFrac=mean(value, na.rm=T), sdFrac=sd(value, na.rm=T), mDate=mean(Date_collected)) %>% 
-  mutate(ci_l=mFrac-sdFrac, ci_u=mFrac+sdFrac)
-
-
-#change confidence interval location to go with stacked barplot
-drain_means$ci_l[drain_means$Source == "PML"] <- with(drain_means,ci_l[Source == "PML"] +
-                                                        ci_l[Source == "MW"])
-drain_means$ci_u[drain_means$Source == "PML"] <- with(drain_means,ci_u[Source == "PML"] +
-                                                        ci_u[Source == "MW"])
-drain_means$ci_l[drain_means$Source == "SIM"] <- ifelse(drain_means$mFrac[drain_means$Source=="SIM"]<0, 0,
-                                                        with(drain_means,ci_l[Source == "PML"] +ci_l[Source == "SIM"]))
-drain_means$ci_u[drain_means$Source == "SIM"] <- ifelse(drain_means$mFrac[drain_means$Source=="SIM"]<0, 0,
-                                                        with(drain_means,ci_u[Source == "PML"] + ci_u[Source == "SIM"]))
-
-
-drain_means %>% 
-  ggplot(aes(Drainage, mFrac*100))+
-  geom_col(aes(fill = Source), position = position_stack(reverse = T)) +
-  scale_fill_manual(values=c('#84c64d', '#409e93', '#4e6cb2'))+
-  geom_errorbar(aes(ymin = ci_l*100, ymax = ci_u*100), width=0, 
-                stat="identity")+
-  coord_flip(ylim=c(0,100)) +
-  geom_hline(yintercept=c(0,100))+
-  facet_grid(Drainage*DepthCat~Season, scales="free")+
-  theme_cowplot()+
-  ylab("% Contribution")+
-  xlab("")
-
-```
-
-
-
-##Salinity data vs timepoints of sampling
-###needs work
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=10}
-
-pts <- ctd %>%
-  right_join(data_means, by=c("station"="Station", "date"="mDate"))
-
-mytheme <-theme(axis.text.x = element_text(angle = 45, hjust = 1, size=18),
-        axis.text.y=element_text(size=18),
-        axis.title=element_text(size=20),
-        plot.title=element_text(size=24,face="bold"))
-
-
-ctd_val <- ctd %>% filter(flags_condsal!="INV")%>%
-  group_by(station, date) %>% 
-  summarize(mSal=mean(salinity, na.rm=T)) 
-
-ctd_val%>% 
-  filter(station=="EELD2") %>% 
-  ggplot(aes(date, mSal))+
-  geom_line(size=1)+
-  geom_vline(data=pts[pts$Drainage=="Elson East",], aes(xintercept=date), size=2, color='#2e2056', alpha=.5)+
-  theme_cowplot()+
-  ylim(c(0,45))+
-  ylab("Salinity")+
-  xlab("")+
-  scale_x_date(breaks="2 months", date_labels="%b")+
-  mytheme+
-  ggtitle("Elson East")
-  
-
-ctd_val%>% 
-  filter(station=="KALD2") %>% 
-  ggplot(aes(date, mSal))+
-  geom_line(size=1)+
-  geom_vline(data=pts[pts$Lagoon=="Kakto",], aes(xintercept=date), size=1.5, color='#2e2056', alpha=.5)+
-  theme_cowplot()+
-  ylim(c(0,45))+
-  ylab("Salinity")+
-  xlab("")+
-  scale_x_date(breaks="2 months", date_labels="%b")+
-  mytheme+
-  ggtitle("Kaktovik")
-
-ctd_val%>% 
-  filter(station=="JALD2") %>% 
-  ggplot(aes(date, mSal))+
-  geom_line(size=1)+
-  geom_vline(data=pts[pts$Lagoon=="Jago",], aes(xintercept=date), size=1.5, color='#2e2056', alpha=.5)+
-  theme_cowplot()+
-  ylim(c(0,45))+
-  ylab("Salinity")+
-  xlab("")+
-  scale_x_date(breaks="2 months", date_labels="%b")+
-  mytheme+
-  ggtitle("Jago")
-```
-
-mixing plot
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=5, fig.width=6}
 #plot
