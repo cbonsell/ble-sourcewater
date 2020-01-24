@@ -87,24 +87,25 @@ pal <- colorFactor(c("gold", "navy", "chartreuse3"), domain = c("primary", "seco
 
 Stations %>% leaflet() %>% 
   addProviderTiles(providers$Esri.WorldImagery) %>% 
-  addCircleMarkers(~ Longitude, ~ Latitude, 
+  addCircleMarkers(~ Longitude, ~ Latitude,
+                   group = "StationName",
                    color = ~pal(Type),
                    radius=6,
                    stroke = FALSE, 
                    fillOpacity = 0.5,
                    label= ~StationName,
-                   labelOptions = labelOptions(noHide = F,
+                   labelOptions = labelOptions(permenant = T,
                                                direction = 'right',
                                                offset=c(0,-5),
                                                opacity=1,
                                                style = list(
                                                  "font-style" = "bold",
-                                                 "font-size" = "20px",
+                                                 "font-size" = "14px",
                                                  "color"="white",
                                                  "background"="transparent",
                                                  "border"="none",
                                                  "box-shadow"="none"))) %>% 
-  addLegend(pal = pal, values = ~Type, opacity = 1, title="Station type") %>% 
+  addLegend(pal = pal, values = ~Type, opacity = 1, title="Station type", group="StationPoint") %>% 
   addScaleBar() %>% 
   addMiniMap(zoomLevelFixed = 2, 
              centerFixed=c(65, -150))
