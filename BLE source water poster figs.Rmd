@@ -14,6 +14,7 @@ library(DT)
 library(knitr)
 library(kableExtra)
 library(plotly)
+library(leaflet)
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
@@ -69,6 +70,46 @@ Pal <- c('#625989', '#636591', '#657298', '#677f9f', '#6a8ba5', '#6e98aa', '#72a
 
 
 ###We have 4 stations per lagoon system, two in shallow reaches of the lagoon (<1m), and two in deeper areas (>2.5m). We also sample major freshwater inflows associated with each lagoon. 
+
+```{r map, echo=F, message=F, warnings=F, fig.height=4, fig.width=6}
+Stations <- read_csv("BLE_LTER_CP_Stations.csv", 
+                     col_types=cols(
+  StationId = col_character(),
+  StationName = col_character(),
+  Latitude = col_double(),
+  Longitude = col_double(),
+  Habitat = col_character(),
+  Type = col_factor()
+)) %>% 
+  filter(Type!="ocean")
+
+pal <- colorFactor(c("gold", "navy", "chartreuse3"), domain = c("primary", "secondary", "river"))
+
+Stations %>% leaflet() %>% 
+  addProviderTiles(providers$Esri.WorldImagery) %>% 
+  addCircleMarkers(~ Longitude, ~ Latitude, 
+                   color = ~pal(Type),
+                   radius=6,
+                   stroke = FALSE, 
+                   fillOpacity = 0.5,
+                   label= ~StationName,
+                   labelOptions = labelOptions(noHide = F,
+                                               direction = 'right',
+                                               offset=c(0,-5),
+                                               opacity=1,
+                                               style = list(
+                                                 "font-style" = "bold",
+                                                 "font-size" = "20px",
+                                                 "color"="white",
+                                                 "background"="transparent",
+                                                 "border"="none",
+                                                 "box-shadow"="none"))) %>% 
+  addLegend(pal = pal, values = ~Type, opacity = 1, title="Station type") %>% 
+  addScaleBar() %>% 
+  addMiniMap(zoomLevelFixed = 2, 
+             centerFixed=c(65, -150))
+```
+
 
 ###These lagoons exhibit large variability in **salinity** over the year.
 
