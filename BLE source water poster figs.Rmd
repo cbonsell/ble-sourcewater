@@ -71,7 +71,7 @@ Pal <- c('#625989', '#636591', '#657298', '#677f9f', '#6a8ba5', '#6e98aa', '#72a
 
 ###We have 4 stations per lagoon system, two in shallow reaches of the lagoon (<1m), and two in deeper areas (>2.5m). We also sample major freshwater inflows associated with each lagoon. 
 
-```{r map, echo=F, message=F, warnings=F, fig.height=4, fig.width=6}
+```{r map, echo=F, message=F, warnings=F}
 Stations <- read_csv("BLE_LTER_CP_Stations.csv", 
                      col_types=cols(
   StationId = col_character(),
